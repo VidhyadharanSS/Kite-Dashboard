@@ -108,7 +108,7 @@ func setupAPIRouter(r *gin.RouterGroup, cm *cluster.ClusterManager) {
 	// Once users are configured, this API cannot be used.
 	adminAPI.POST("/users/create_super_user", handlers.CreateSuperUser)
 	adminAPI.POST("/clusters/import", cm.ImportClustersFromKubeconfig)
-	adminAPI.Use(authHandler.RequireAuth(), authHandler.RequireAdmin())
+	adminAPI.Use(authHandler.RequireAuth(), middleware.AuditLogger(), authHandler.RequireAdmin())
 	{
 		oauthProviderAPI := adminAPI.Group("/oauth-providers")
 		{
@@ -160,7 +160,7 @@ func setupAPIRouter(r *gin.RouterGroup, cm *cluster.ClusterManager) {
 	// API routes group (protected)
 	api := r.Group("/api/v1")
 	api.GET("/clusters", authHandler.RequireAuth(), cm.GetClusters)
-	api.Use(authHandler.RequireAuth(), middleware.ClusterMiddleware(cm))
+	api.Use(authHandler.RequireAuth(), middleware.AuditLogger(), middleware.ClusterMiddleware(cm))
 	{
 		api.GET("/overview", handlers.GetOverview)
 

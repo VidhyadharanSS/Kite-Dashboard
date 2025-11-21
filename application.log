@@ -1,0 +1,22 @@
+127.0.0.1 - 2025-11-21 22:33:36 "GET /api/v1/admin/clusters/" 200 140.222µs ssvd
+127.0.0.1 - 2025-11-21 22:33:36 "GET /api/v1/admin/oauth-providers/" 200 145.337µs ssvd
+127.0.0.1 - 2025-11-21 22:33:36 "GET /api/v1/admin/roles/" 200 401.517µs ssvd
+127.0.0.1 - 2025-11-21 22:33:36 "GET /api/v1/events?limit=20" 200 101.734752ms ssvd
+127.0.0.1 - 2025-11-21 22:33:37 "GET /api/v1/overview" 200 285.006293ms ssvd
+127.0.0.1 - 2025-11-21 22:34:07 "GET /api/v1/overview" 200 41.153301ms ssvd
+127.0.0.1 - 2025-11-21 22:34:37 "GET /api/v1/overview" 200 47.059099ms ssvd
+127.0.0.1 - 2025-11-21 22:35:07 "GET /api/v1/overview" 200 37.564889ms ssvd
+127.0.0.1 - 2025-11-21 22:35:37 "GET /api/v1/overview" 200 35.67851ms ssvd
+127.0.0.1 - 2025-11-21 22:36:07 "GET /api/v1/overview" 200 38.158607ms ssvd
+127.0.0.1 - 2025-11-21 22:36:37 "GET /api/v1/overview" 200 66.727271ms ssvd
+127.0.0.1 - 2025-11-21 22:37:07 "GET /api/v1/overview" 200 28.796089ms ssvd
+127.0.0.1 - 2025-11-21 22:37:37 "GET /api/v1/overview" 200 77.800985ms ssvd
+127.0.0.1 - 2025-11-21 22:38:07 "GET /api/v1/overview" 200 54.814887ms ssvd
+127.0.0.1 - 2025-11-21 22:38:34 "GET /api/v1/admin/clusters/" 200 191.146µs - ssvd
+127.0.0.1 - 2025-11-21 22:38:34 "GET /api/v1/admin/oauth-providers/" 200 92.97µs - ssvd
+127.0.0.1 - 2025-11-21 22:38:34 "GET /api/v1/admin/roles/" 200 326.385µs - ssvd
+127.0.0.1 - 2025-11-21 22:38:34 "GET /api/v1/events?limit=20" 200 101.343396ms kubernetes-admin@kubernetes ssvd
+127.0.0.1 - 2025-11-21 22:38:34 "GET /api/v1/overview" 200 291.625017ms kubernetes-admin@kubernetes ssvd
+127.0.0.1 - 2025-11-21 22:39:04 "GET /api/v1/overview" 200 34.557094ms kubernetes-admin@kubernetes ssvd
+127.0.0.1 - 2025-11-21 22:39:34 "GET /api/v1/overview" 200 40.256894ms kubernetes-admin@kubernetes ssvd
+127.0.0.1 - 2025-11-21 22:40:04 "GET /api/v1/overview" 200 31.654572ms kubernetes-admin@kubernetes ssvd
