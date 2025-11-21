@@ -55,19 +55,11 @@ spec:
             - name: HOST
               value: {{ .Values.host }}
             {{- end }}
-            {{- if .Values.anonymousUserEnabled }}
-            - name: ANONYMOUS_USER_ENABLED
-              value: "true"
-            {{- end }}
             {{- if eq .Values.db.type "sqlite" }}
             - name: DB_TYPE
               value: sqlite
             - name: DB_DSN
               value: {{ (printf "%s/%s?%s" .Values.db.sqlite.persistence.mountPath .Values.db.sqlite.persistence.filename .Values.db.sqlite.options) }}
-            {{- end }}
-            {{- if .Values.basePath }}
-            - name: KITE_BASE
-              value: {{ .Values.basePath }}
             {{- end }}
           {{- with .Values.extraEnvs }}
           {{- toYaml . | nindent 12 }}

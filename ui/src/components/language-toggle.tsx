@@ -11,7 +11,6 @@ import {
 
 const languages = [
   { code: 'en', name: 'English' },
-  { code: 'zh', name: '中文' },
 ]
 
 export function LanguageToggle() {
@@ -19,6 +18,11 @@ export function LanguageToggle() {
 
   const handleLanguageChange = (languageCode: string) => {
     i18n.changeLanguage(languageCode)
+  }
+
+  // If there is only one language (or fewer), render nothing.
+  if (languages.length <= 1) {
+    return null
   }
 
   return (

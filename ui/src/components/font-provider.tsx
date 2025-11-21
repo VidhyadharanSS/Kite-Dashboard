@@ -1,7 +1,8 @@
 /* eslint-disable react-refresh/only-export-components */
 import { createContext, useContext, useEffect, useMemo, useState } from 'react'
 
-type FontOption = 'system' | 'maple' | 'jetbrains'
+// 1. Change the available font option to just 'zoho'.
+type FontOption = 'zoho'
 
 type FontProviderProps = {
   children: React.ReactNode
@@ -14,8 +15,9 @@ type FontProviderState = {
   setFont: (font: FontOption) => void
 }
 
+// 2. Set the initial state to use 'zoho' by default.
 const initialState: FontProviderState = {
-  font: 'maple',
+  font: 'zoho',
   setFont: () => null,
 }
 
@@ -23,7 +25,8 @@ const FontProviderContext = createContext<FontProviderState>(initialState)
 
 export function FontProvider({
   children,
-  defaultFont = 'maple',
+  // 3. Update the default prop to 'zoho'.
+  defaultFont = 'zoho',
   storageKey = 'vite-ui-font',
   ...props
 }: FontProviderProps) {
@@ -33,13 +36,8 @@ export function FontProvider({
 
   useEffect(() => {
     const root = window.document.documentElement
-    let value = "'Maple Mono', var(--font-sans)"
-    if (font === 'jetbrains') {
-      value = "'JetBrains Mono', var(--font-sans)"
-    }
-    if (font === 'system') {
-      value = 'var(--font-sans)'
-    }
+    // 4. Remove all 'if' conditions. Hard-code the CSS variable to use Zoho Puvi.
+    const value = "'Zoho Puvi', var(--font-sans)"
     root.style.setProperty('--app-font-sans', value)
     localStorage.setItem(storageKey, font)
   }, [font, storageKey])

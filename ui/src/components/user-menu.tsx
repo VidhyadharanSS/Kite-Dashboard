@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useAuth } from '@/contexts/auth-context'
-import { CaseSensitive, Check, LogOut, Palette } from 'lucide-react'
+import { Check, LogOut, Palette } from 'lucide-react'
 
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Button } from '@/components/ui/button'
@@ -21,7 +21,7 @@ import { SidebarCustomizer } from './sidebar-customizer'
 
 export function UserMenu() {
   const { user, logout } = useAuth()
-  const { colorTheme, setColorTheme, font, setFont } = useAppearance()
+  const { colorTheme, setColorTheme } = useAppearance()
   const [open, setOpen] = useState(false)
 
   if (!user) return null
@@ -93,9 +93,8 @@ export function UserMenu() {
                   onClick={() => setColorTheme(key as ColorTheme)}
                   role="menuitemradio"
                   aria-checked={isSelected}
-                  className={`flex items-center justify-between gap-2 cursor-pointer ${
-                    isSelected ? 'font-medium text-foreground' : ''
-                  }`}
+                  className={`flex items-center justify-between gap-2 cursor-pointer ${isSelected ? 'font-medium text-foreground' : ''
+                    }`}
                 >
                   <div className="flex items-center gap-2">
                     <span className="capitalize">{key}</span>
@@ -107,49 +106,7 @@ export function UserMenu() {
           </DropdownMenuSubContent>
         </DropdownMenuSub>
 
-        <DropdownMenuSub>
-          <DropdownMenuSubTrigger>
-            <CaseSensitive className="mr-2 h-4 w-4" />
-            <span>Font</span>
-          </DropdownMenuSubTrigger>
-          <DropdownMenuSubContent>
-            <DropdownMenuItem
-              onClick={() => setFont('system')}
-              role="menuitemradio"
-              aria-checked={font === 'system'}
-              className={`flex items-center justify-between gap-2 cursor-pointer ${
-                font === 'system' ? 'font-medium text-foreground' : ''
-              }`}
-            >
-              <span>System</span>
-              {font === 'system' && <Check className="h-4 w-4 text-primary" />}
-            </DropdownMenuItem>
-            <DropdownMenuItem
-              onClick={() => setFont('maple')}
-              role="menuitemradio"
-              aria-checked={font === 'maple'}
-              className={`flex items-center justify-between gap-2 cursor-pointer ${
-                font === 'maple' ? 'font-medium text-foreground' : ''
-              }`}
-            >
-              <span>Maple</span>
-              {font === 'maple' && <Check className="h-4 w-4 text-primary" />}
-            </DropdownMenuItem>
-            <DropdownMenuItem
-              onClick={() => setFont('jetbrains')}
-              role="menuitemradio"
-              aria-checked={font === 'jetbrains'}
-              className={`flex items-center justify-between gap-2 cursor-pointer ${
-                font === 'jetbrains' ? 'font-medium text-foreground' : ''
-              }`}
-            >
-              <span>JetBrains Mono</span>
-              {font === 'jetbrains' && (
-                <Check className="h-4 w-4 text-primary" />
-              )}
-            </DropdownMenuItem>
-          </DropdownMenuSubContent>
-        </DropdownMenuSub>
+        {/* Font selection menu removed */}
 
         <SidebarCustomizer onOpenChange={(d) => setOpen(d)} />
 

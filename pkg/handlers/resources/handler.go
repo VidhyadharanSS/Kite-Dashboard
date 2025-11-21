@@ -53,7 +53,7 @@ func RegisterRoutes(group *gin.RouterGroup) {
 		"endpoints":                NewGenericResourceHandler[*corev1.Endpoints, *corev1.EndpointsList]("endpoints", false, false),
 		"endpointslices":           NewGenericResourceHandler[*discoveryv1.EndpointSlice, *discoveryv1.EndpointSliceList]("endpointslices", false, false),
 		"configmaps":               NewGenericResourceHandler[*corev1.ConfigMap, *corev1.ConfigMapList]("configmaps", false, true),
-		"secrets":                  NewGenericResourceHandler[*corev1.Secret, *corev1.SecretList]("secrets", false, true),
+// 		"secrets":                  NewGenericResourceHandler[*corev1.Secret, *corev1.SecretList](false, true),
 		"persistentvolumes":        NewGenericResourceHandler[*corev1.PersistentVolume, *corev1.PersistentVolumeList]("persistentvolumes", true, true),
 		"persistentvolumeclaims":   NewGenericResourceHandler[*corev1.PersistentVolumeClaim, *corev1.PersistentVolumeClaimList]("persistentvolumeclaims", false, true),
 		"serviceaccounts":          NewGenericResourceHandler[*corev1.ServiceAccount, *corev1.ServiceAccountList]("serviceaccounts", false, false),
@@ -93,7 +93,7 @@ func RegisterRoutes(group *gin.RouterGroup) {
 	}
 
 	// Register related resources route for supported resource types
-	supportedRelatedResourceTypes := []string{"pods", "deployments", "statefulsets", "daemonsets", "configmaps", "secrets", "persistentvolumeclaims", "httproutes", "horizontalpodautoscalers", "services", "ingresses"}
+	supportedRelatedResourceTypes := []string{"pods", "deployments", "statefulsets", "daemonsets", "configmaps", "persistentvolumeclaims", "httproutes", "horizontalpodautoscalers", "services", "ingresses"}
 	for _, resourceType := range supportedRelatedResourceTypes {
 		if handler, exists := handlers[resourceType]; exists && !handler.IsClusterScoped() {
 			g := group.Group("/" + resourceType)

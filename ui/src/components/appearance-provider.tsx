@@ -15,7 +15,8 @@ type AppearanceProviderProps = {
   defaultColorTheme?: ColorTheme
   colorThemeStorageKey?: string
   // Font
-  defaultFont?: 'system' | 'maple' | 'jetbrains'
+  // 1. Update the type for defaultFont to only allow 'zoho'.
+  defaultFont?: 'zoho'
   fontStorageKey?: string
 }
 
@@ -25,7 +26,8 @@ export function AppearanceProvider({
   themeStorageKey = 'vite-ui-theme',
   defaultColorTheme = 'default',
   colorThemeStorageKey = 'vite-ui-color-theme',
-  defaultFont = 'maple',
+  // 2. Change the defaultFont value to 'zoho'.
+  defaultFont = 'zoho',
   fontStorageKey = 'vite-ui-font',
 }: AppearanceProviderProps) {
   return (

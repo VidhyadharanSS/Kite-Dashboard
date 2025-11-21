@@ -160,7 +160,6 @@ const defaultMenus: DefaultMenus = {
   ],
   'sidebar.groups.config': [
     { titleKey: 'nav.configMaps', url: '/configmaps', icon: IconMap },
-    { titleKey: 'nav.secrets', url: '/secrets', icon: IconLock },
     {
       titleKey: 'nav.horizontalpodautoscalers',
       url: '/horizontalpodautoscalers',

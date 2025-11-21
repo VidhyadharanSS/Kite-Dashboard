@@ -144,7 +144,7 @@ export function LoginPage() {
           <div className="text-center mb-8">
             <div className="flex items-center justify-center space-x-2 mb-4">
               <img src={Logo} className="h-10 w-10 dark:invert" />{' '}
-              <h1 className="text-2xl font-bold">Kite</h1>
+              <h1 className="text-2xl font-bold">Kites</h1>
             </div>
             <p className="text-gray-600">{t('login.kubernetesDashboard')}</p>
           </div>
@@ -178,21 +178,21 @@ export function LoginPage() {
                   {/* Additional actions for permission errors */}
                   {(searchParams.get('reason') === 'insufficient_permissions' ||
                     error === 'insufficient_permissions') && (
-                    <div className="text-center space-y-2">
-                      <Button
-                        variant="outline"
-                        onClick={() => {
-                          window.location.href = withSubPath('/login')
-                        }}
-                        className="w-full"
-                      >
-                        {t('login.tryAgainDifferentAccount')}
-                      </Button>
-                      <p className="text-xs text-gray-500">
-                        {t('login.tryAgainHint')}
-                      </p>
-                    </div>
-                  )}
+                      <div className="text-center space-y-2">
+                        <Button
+                          variant="outline"
+                          onClick={() => {
+                            window.location.href = withSubPath('/login')
+                          }}
+                          className="w-full"
+                        >
+                          {t('login.tryAgainDifferentAccount')}
+                        </Button>
+                        <p className="text-xs text-gray-500">
+                          {t('login.tryAgainHint')}
+                        </p>
+                      </div>
+                    )}
                 </div>
               )}
 
