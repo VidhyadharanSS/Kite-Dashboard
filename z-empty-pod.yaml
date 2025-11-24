@@ -1,0 +1,59 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: curl-test-pod
+  namespace: kite
+spec:
+  volumes:
+    - name: kube-api-access-rslv7
+      projected:
+        sources:
+          - serviceAccountToken:
+              expirationSeconds: 3607
+              path: token
+          - configMap:
+              name: kube-root-ca.crt
+              items:
+                - key: ca.crt
+                  path: ca.crt
+          - downwardAPI:
+              items:
+                - path: namespace
+                  fieldRef:
+                    apiVersion: v1
+                    fieldPath: metadata.namespace
+        defaultMode: 420
+
+  containers:
+    - name: curl
+      image: crmdi-test6.csez.zohocorpin.com/dev/curl:latest
+      command: ["tail", "-f", "/dev/null"]
+      env:
+        - name: HTTP_PROXY
+          value: http://192.168.100.100:3128
+        - name: HTTPS_PROXY
+          value: http://192.168.100.100:3128
+        - name: NO_PROXY
+          value: localhost,127.0.0.1,.cluster.local
+      volumeMounts:
+        - name: kube-api-access-rslv7
+          mountPath: /var/run/secrets/kubernetes.io/serviceaccount
+          readOnly: true
+      imagePullPolicy: Always
+
+  restartPolicy: Never
+  serviceAccountName: kite
+  imagePullSecrets:
+    - name: regcred
+  dnsPolicy: ClusterFirst
+  enableServiceLinks: true
+  schedulerName: default-scheduler
+  tolerations:
+    - key: node.kubernetes.io/not-ready
+      operator: Exists
+      effect: NoExecute
+      tolerationSeconds: 300
+    - key: node.kubernetes.io/unreachable
+      operator: Exists
+      effect: NoExecute
+      tolerationSeconds: 300

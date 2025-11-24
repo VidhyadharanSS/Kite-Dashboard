@@ -1,22 +1,277 @@
-127.0.0.1 - 2025-11-21 22:33:36 "GET /api/v1/admin/clusters/" 200 140.222µs ssvd
-127.0.0.1 - 2025-11-21 22:33:36 "GET /api/v1/admin/oauth-providers/" 200 145.337µs ssvd
-127.0.0.1 - 2025-11-21 22:33:36 "GET /api/v1/admin/roles/" 200 401.517µs ssvd
-127.0.0.1 - 2025-11-21 22:33:36 "GET /api/v1/events?limit=20" 200 101.734752ms ssvd
-127.0.0.1 - 2025-11-21 22:33:37 "GET /api/v1/overview" 200 285.006293ms ssvd
-127.0.0.1 - 2025-11-21 22:34:07 "GET /api/v1/overview" 200 41.153301ms ssvd
-127.0.0.1 - 2025-11-21 22:34:37 "GET /api/v1/overview" 200 47.059099ms ssvd
-127.0.0.1 - 2025-11-21 22:35:07 "GET /api/v1/overview" 200 37.564889ms ssvd
-127.0.0.1 - 2025-11-21 22:35:37 "GET /api/v1/overview" 200 35.67851ms ssvd
-127.0.0.1 - 2025-11-21 22:36:07 "GET /api/v1/overview" 200 38.158607ms ssvd
-127.0.0.1 - 2025-11-21 22:36:37 "GET /api/v1/overview" 200 66.727271ms ssvd
-127.0.0.1 - 2025-11-21 22:37:07 "GET /api/v1/overview" 200 28.796089ms ssvd
-127.0.0.1 - 2025-11-21 22:37:37 "GET /api/v1/overview" 200 77.800985ms ssvd
-127.0.0.1 - 2025-11-21 22:38:07 "GET /api/v1/overview" 200 54.814887ms ssvd
-127.0.0.1 - 2025-11-21 22:38:34 "GET /api/v1/admin/clusters/" 200 191.146µs - ssvd
-127.0.0.1 - 2025-11-21 22:38:34 "GET /api/v1/admin/oauth-providers/" 200 92.97µs - ssvd
-127.0.0.1 - 2025-11-21 22:38:34 "GET /api/v1/admin/roles/" 200 326.385µs - ssvd
-127.0.0.1 - 2025-11-21 22:38:34 "GET /api/v1/events?limit=20" 200 101.343396ms kubernetes-admin@kubernetes ssvd
-127.0.0.1 - 2025-11-21 22:38:34 "GET /api/v1/overview" 200 291.625017ms kubernetes-admin@kubernetes ssvd
-127.0.0.1 - 2025-11-21 22:39:04 "GET /api/v1/overview" 200 34.557094ms kubernetes-admin@kubernetes ssvd
-127.0.0.1 - 2025-11-21 22:39:34 "GET /api/v1/overview" 200 40.256894ms kubernetes-admin@kubernetes ssvd
-127.0.0.1 - 2025-11-21 22:40:04 "GET /api/v1/overview" 200 31.654572ms kubernetes-admin@kubernetes ssvd
+127.0.0.1 - 2025-11-24 19:41:07 "GET /api/v1/admin/clusters/" 200 495.501µs - ssvd
+127.0.0.1 - 2025-11-24 19:41:07 "GET /api/v1/admin/oauth-providers/" 200 379.544µs - ssvd
+127.0.0.1 - 2025-11-24 19:41:07 "GET /api/v1/admin/roles/" 200 1.117092ms - ssvd
+127.0.0.1 - 2025-11-24 19:41:07 "GET /api/v1/events?limit=20" 200 102.218919ms kubernetes-admin@kubernetes ssvd
+127.0.0.1 - 2025-11-24 19:41:08 "GET /api/v1/overview" 200 278.325162ms kubernetes-admin@kubernetes ssvd
+127.0.0.1 - 2025-11-24 19:41:12 "GET /api/v1/namespaces" 200 1.987684ms kubernetes-admin@kubernetes ssvd
+127.0.0.1 - 2025-11-24 19:41:12 "GET /api/v1/pods/kite?reduce=true" 200 106.2745ms kubernetes-admin@kubernetes ssvd
+127.0.0.1 - 2025-11-24 19:41:17 "GET /api/v1/pods/kite?reduce=true" 200 629.36µs kubernetes-admin@kubernetes ssvd
+127.0.0.1 - 2025-11-24 19:44:46 "GET /api/v1/pods/kite?reduce=true" 200 189.384µs kubernetes-admin@kubernetes ssvd
+127.0.0.1 - 2025-11-24 19:44:46 "GET /api/v1/namespaces" 200 563.366µs kubernetes-admin@kubernetes ssvd
+127.0.0.1 - 2025-11-24 19:58:31 "GET /api/v1/init_check" 200 3.133667ms - -
+127.0.0.1 - 2025-11-24 19:58:31 "GET /api/auth/providers" 200 1.890574ms - -
+127.0.0.1 - 2025-11-24 19:58:31 "GET /api/auth/providers" 200 121.752µs - -
+127.0.0.1 - 2025-11-24 19:58:31 "GET /api/auth/user" 200 272.87µs - ssvd
+127.0.0.1 - 2025-11-24 19:58:31 "GET /api/auth/user" 200 180.243µs - ssvd
+127.0.0.1 - 2025-11-24 19:58:31 "GET /api/v1/clusters" 200 217.272µs - ssvd
+127.0.0.1 - 2025-11-24 19:58:31 "GET /api/v1/pods/kite/kite-57d59796c6-sjlvf" 200 5.340279ms kubernetes-admin@kubernetes ssvd
+127.0.0.1 - 2025-11-24 19:58:40 "GET /api/v1/admin/clusters/" 200 413.289µs - ssvd
+127.0.0.1 - 2025-11-24 19:58:40 "GET /api/v1/admin/oauth-providers/" 200 430.041µs - ssvd
+127.0.0.1 - 2025-11-24 19:58:40 "GET /api/v1/admin/roles/" 200 604.455µs - ssvd
+127.0.0.1 - 2025-11-24 19:58:40 "GET /api/v1/events?limit=20" 200 102.389865ms kubernetes-admin@kubernetes ssvd
+127.0.0.1 - 2025-11-24 19:58:40 "GET /api/v1/overview" 200 250.043147ms kubernetes-admin@kubernetes ssvd
+127.0.0.1 - 2025-11-24 19:58:45 "GET /api/v1/nodes?reduce=true" 200 146.818308ms kubernetes-admin@kubernetes ssvd
+127.0.0.1 - 2025-11-24 19:58:50 "GET /api/v1/nodes?reduce=true" 200 42.576508ms kubernetes-admin@kubernetes ssvd
+127.0.0.1 - 2025-11-24 19:58:51 "GET /api/v1/namespaces" 200 3.361654ms kubernetes-admin@kubernetes ssvd
+127.0.0.1 - 2025-11-24 19:58:51 "GET /api/v1/pods/kite?reduce=true" 200 102.596465ms kubernetes-admin@kubernetes ssvd
+127.0.0.1 - 2025-11-24 19:58:52 "GET /api/v1/pods/kite/kite-57d59796c6-sjlvf" 200 1.294547ms kubernetes-admin@kubernetes ssvd
+127.0.0.1 - 2025-11-24 20:00:03 "GET /api/v1/init_check" 200 241.153µs - -
+127.0.0.1 - 2025-11-24 20:00:03 "GET /api/v1/pods/kite/kite-57d59796c6-sjlvf" 200 1.866288ms kubernetes-admin@kubernetes ssvd
+127.0.0.1 - 2025-11-24 20:00:06 "GET /api/v1/init_check" 200 154.486µs - -
+127.0.0.1 - 2025-11-24 20:00:06 "GET /api/auth/providers" 200 160.357µs - -
+127.0.0.1 - 2025-11-24 20:00:06 "GET /api/auth/providers" 200 151.824µs - -
+127.0.0.1 - 2025-11-24 20:00:06 "GET /api/auth/user" 200 263.959µs - ssvd
+127.0.0.1 - 2025-11-24 20:00:06 "GET /api/auth/user" 200 213.714µs - ssvd
+127.0.0.1 - 2025-11-24 20:00:06 "GET /api/v1/clusters" 200 146.759µs - ssvd
+127.0.0.1 - 2025-11-24 20:00:06 "GET /api/v1/pods/kite/kite-57d59796c6-sjlvf" 200 962.225µs kubernetes-admin@kubernetes ssvd
+W1124 20:03:16.008509 4130527 common.go:78] KITE_ENCRYPT_KEY is not set, using default key, this is not secure for production!
+W1124 20:03:16.008509 4130527 common.go:78] KITE_ENCRYPT_KEY is not set, using default key, this is not secure for production!
+I1124 20:03:16.013439 4130527 cluster_manager.go:200] Cluster kubernetes-admin@kubernetes status changed, updating, enabled -> true
+I1124 20:03:16.014272 4130527 envvar.go:172] "Feature gate default state" feature="InOrderInformers" enabled=true
+I1124 20:03:16.014292 4130527 envvar.go:172] "Feature gate default state" feature="InformerResourceVersion" enabled=false
+I1124 20:03:16.014299 4130527 envvar.go:172] "Feature gate default state" feature="WatchListClient" enabled=false
+I1124 20:03:16.014310 4130527 envvar.go:172] "Feature gate default state" feature="ClientsAllowCBOR" enabled=false
+I1124 20:03:16.014314 4130527 envvar.go:172] "Feature gate default state" feature="ClientsPreferCBOR" enabled=false
+I1124 20:03:16.030330 4130527 reflector.go:358] "Starting reflector" logger="controller-runtime.cache" type="*v1.Pod" resyncPeriod="10h18m6.356658213s" reflector="k8s.io/client-go@v0.34.1/tools/cache/reflector.go:290"
+I1124 20:03:16.030356 4130527 reflector.go:404] "Listing and watching" logger="controller-runtime.cache" type="*v1.Pod" reflector="k8s.io/client-go@v0.34.1/tools/cache/reflector.go:290"
+I1124 20:03:16.330952 4130527 reflector.go:436] "Caches populated" logger="controller-runtime.cache" type="*v1.Pod" reflector="k8s.io/client-go@v0.34.1/tools/cache/reflector.go:290"
+I1124 20:03:16.431135 4130527 reflector.go:358] "Starting reflector" logger="controller-runtime.cache" type="*v1.Service" resyncPeriod="10h52m17.338206938s" reflector="k8s.io/client-go@v0.34.1/tools/cache/reflector.go:290"
+I1124 20:03:16.431190 4130527 reflector.go:404] "Listing and watching" logger="controller-runtime.cache" type="*v1.Service" reflector="k8s.io/client-go@v0.34.1/tools/cache/reflector.go:290"
+I1124 20:03:16.442114 4130527 reflector.go:436] "Caches populated" logger="controller-runtime.cache" type="*v1.Service" reflector="k8s.io/client-go@v0.34.1/tools/cache/reflector.go:290"
+I1124 20:03:16.533675 4130527 cluster_manager.go:88] Loaded K8s client for cluster: kubernetes-admin@kubernetes, version: v1.27.4
+I1124 20:03:16.534032 4130527 main.go:266] Kite server started on port 8080
+I1124 20:03:16.534043 4130527 main.go:267] Version: v0.0.0-2edeef8, Build Date: 2025-11-24T14:33:13Z, Commit: 2edeef84c4ffbcc1491860bc0800fc8b0ad5acc9
+127.0.0.1 - 2025-11-24 20:03:22 "GET /api/v1/init_check" 200 404.116µs - -
+I1124 20:03:22.281990 4130527 rbac.go:22] RBAC Check - User: ssvd, OIDC Groups: [], Resource: pods, Verb: get, Cluster: kubernetes-admin@kubernetes, Namespace: kite, Hit Role: admin
+127.0.0.1 - 2025-11-24 20:03:22 "GET /api/v1/pods/kite/kite-57d59796c6-sjlvf" 200 2.588353ms kubernetes-admin@kubernetes ssvd
+127.0.0.1 - 2025-11-24 20:03:24 "GET /api/v1/init_check" 200 278.096µs - -
+127.0.0.1 - 2025-11-24 20:03:24 "GET /api/auth/providers" 200 175.777µs - -
+127.0.0.1 - 2025-11-24 20:03:24 "GET /api/auth/providers" 200 507.088µs - -
+127.0.0.1 - 2025-11-24 20:03:24 "GET /api/auth/user" 200 1.023978ms - ssvd
+127.0.0.1 - 2025-11-24 20:03:24 "GET /api/auth/user" 200 710.845µs - ssvd
+127.0.0.1 - 2025-11-24 20:03:24 "GET /api/v1/clusters" 200 886.518µs - ssvd
+I1124 20:03:24.965848 4130527 rbac.go:22] RBAC Check - User: ssvd, OIDC Groups: [], Resource: pods, Verb: get, Cluster: kubernetes-admin@kubernetes, Namespace: kite, Hit Role: admin
+127.0.0.1 - 2025-11-24 20:03:24 "GET /api/v1/pods/kite/kite-57d59796c6-sjlvf" 200 1.230768ms kubernetes-admin@kubernetes ssvd
+127.0.0.1 - 2025-11-24 20:03:30 "GET /api/v1/admin/clusters/" 200 1.315128ms - ssvd
+127.0.0.1 - 2025-11-24 20:03:30 "GET /api/v1/admin/oauth-providers/" 200 1.140371ms - ssvd
+I1124 20:03:30.993376 4130527 rbac.go:22] RBAC Check - User: ssvd, OIDC Groups: [], Resource: events, Verb: get, Cluster: kubernetes-admin@kubernetes, Namespace: _all, Hit Role: admin
+127.0.0.1 - 2025-11-24 20:03:30 "GET /api/v1/admin/roles/" 200 2.593105ms - ssvd
+I1124 20:03:30.993983 4130527 reflector.go:358] "Starting reflector" logger="controller-runtime.cache" type="*v1.Event" resyncPeriod="10h0m51.063772253s" reflector="k8s.io/client-go@v0.34.1/tools/cache/reflector.go:290"
+I1124 20:03:30.994075 4130527 reflector.go:404] "Listing and watching" logger="controller-runtime.cache" type="*v1.Event" reflector="k8s.io/client-go@v0.34.1/tools/cache/reflector.go:290"
+I1124 20:03:30.995387 4130527 reflector.go:358] "Starting reflector" logger="controller-runtime.cache" type="*v1.Node" resyncPeriod="9h36m14.234250748s" reflector="k8s.io/client-go@v0.34.1/tools/cache/reflector.go:290"
+I1124 20:03:30.995481 4130527 reflector.go:404] "Listing and watching" logger="controller-runtime.cache" type="*v1.Node" reflector="k8s.io/client-go@v0.34.1/tools/cache/reflector.go:290"
+I1124 20:03:31.001763 4130527 reflector.go:436] "Caches populated" logger="controller-runtime.cache" type="*v1.Event" reflector="k8s.io/client-go@v0.34.1/tools/cache/reflector.go:290"
+I1124 20:03:31.012188 4130527 reflector.go:436] "Caches populated" logger="controller-runtime.cache" type="*v1.Node" reflector="k8s.io/client-go@v0.34.1/tools/cache/reflector.go:290"
+127.0.0.1 - 2025-11-24 20:03:31 "GET /api/v1/events?limit=20" 200 103.748385ms kubernetes-admin@kubernetes ssvd
+I1124 20:03:31.164175 4130527 reflector.go:358] "Starting reflector" logger="controller-runtime.cache" type="*v1.Namespace" resyncPeriod="9h34m3.254450799s" reflector="k8s.io/client-go@v0.34.1/tools/cache/reflector.go:290"
+I1124 20:03:31.164245 4130527 reflector.go:404] "Listing and watching" logger="controller-runtime.cache" type="*v1.Namespace" reflector="k8s.io/client-go@v0.34.1/tools/cache/reflector.go:290"
+I1124 20:03:31.167193 4130527 reflector.go:436] "Caches populated" logger="controller-runtime.cache" type="*v1.Namespace" reflector="k8s.io/client-go@v0.34.1/tools/cache/reflector.go:290"
+127.0.0.1 - 2025-11-24 20:03:31 "GET /api/v1/overview" 200 277.029914ms kubernetes-admin@kubernetes ssvd
+I1124 20:03:35.707436 4130527 rbac.go:22] RBAC Check - User: ssvd, OIDC Groups: [], Resource: pods, Verb: get, Cluster: kubernetes-admin@kubernetes, Namespace: kite, Hit Role: admin
+I1124 20:03:35.707700 4130527 reflector.go:358] "Starting reflector" logger="controller-runtime.cache" type="*v1beta1.PodMetrics" resyncPeriod="9h7m4.761535698s" reflector="k8s.io/client-go@v0.34.1/tools/cache/reflector.go:290"
+I1124 20:03:35.707716 4130527 reflector.go:404] "Listing and watching" logger="controller-runtime.cache" type="*v1beta1.PodMetrics" reflector="k8s.io/client-go@v0.34.1/tools/cache/reflector.go:290"
+127.0.0.1 - 2025-11-24 20:03:35 "GET /api/v1/namespaces" 200 1.107752ms kubernetes-admin@kubernetes ssvd
+I1124 20:03:35.723966 4130527 reflector.go:436] "Caches populated" logger="controller-runtime.cache" type="*v1beta1.PodMetrics" reflector="k8s.io/client-go@v0.34.1/tools/cache/reflector.go:290"
+127.0.0.1 - 2025-11-24 20:03:35 "GET /api/v1/pods/kite?reduce=true" 200 101.675742ms kubernetes-admin@kubernetes ssvd
+I1124 20:03:37.025463 4130527 reflector.go:404] "Listing and watching" logger="controller-runtime.cache" type="*v1beta1.PodMetrics" reflector="k8s.io/client-go@v0.34.1/tools/cache/reflector.go:290"
+I1124 20:03:37.047410 4130527 reflector.go:436] "Caches populated" logger="controller-runtime.cache" type="*v1beta1.PodMetrics" reflector="k8s.io/client-go@v0.34.1/tools/cache/reflector.go:290"
+I1124 20:03:39.913591 4130527 reflector.go:404] "Listing and watching" logger="controller-runtime.cache" type="*v1beta1.PodMetrics" reflector="k8s.io/client-go@v0.34.1/tools/cache/reflector.go:290"
+I1124 20:03:39.949492 4130527 reflector.go:436] "Caches populated" logger="controller-runtime.cache" type="*v1beta1.PodMetrics" reflector="k8s.io/client-go@v0.34.1/tools/cache/reflector.go:290"
+I1124 20:03:40.828155 4130527 rbac.go:22] RBAC Check - User: ssvd, OIDC Groups: [], Resource: pods, Verb: get, Cluster: kubernetes-admin@kubernetes, Namespace: kite, Hit Role: admin
+127.0.0.1 - 2025-11-24 20:03:40 "GET /api/v1/pods/kite?reduce=true" 200 1.518192ms kubernetes-admin@kubernetes ssvd
+I1124 20:03:45.200617 4130527 reflector.go:404] "Listing and watching" logger="controller-runtime.cache" type="*v1beta1.PodMetrics" reflector="k8s.io/client-go@v0.34.1/tools/cache/reflector.go:290"
+I1124 20:03:45.255680 4130527 reflector.go:436] "Caches populated" logger="controller-runtime.cache" type="*v1beta1.PodMetrics" reflector="k8s.io/client-go@v0.34.1/tools/cache/reflector.go:290"
+I1124 20:03:45.850739 4130527 rbac.go:22] RBAC Check - User: ssvd, OIDC Groups: [], Resource: pods, Verb: get, Cluster: kubernetes-admin@kubernetes, Namespace: kite, Hit Role: admin
+127.0.0.1 - 2025-11-24 20:03:45 "GET /api/v1/pods/kite?reduce=true" 200 1.196413ms kubernetes-admin@kubernetes ssvd
+I1124 20:03:50.876820 4130527 rbac.go:22] RBAC Check - User: ssvd, OIDC Groups: [], Resource: pods, Verb: get, Cluster: kubernetes-admin@kubernetes, Namespace: kite, Hit Role: admin
+127.0.0.1 - 2025-11-24 20:03:50 "GET /api/v1/pods/kite?reduce=true" 200 1.573207ms kubernetes-admin@kubernetes ssvd
+I1124 20:03:53.822620 4130527 rbac.go:22] RBAC Check - User: ssvd, OIDC Groups: [], Resource: events, Verb: get, Cluster: kubernetes-admin@kubernetes, Namespace: _all, Hit Role: admin
+127.0.0.1 - 2025-11-24 20:03:53 "GET /api/v1/events?limit=20" 200 2.32643ms kubernetes-admin@kubernetes ssvd
+I1124 20:03:55.069139 4130527 rbac.go:22] RBAC Check - User: ssvd, OIDC Groups: [], Resource: nodes, Verb: get, Cluster: kubernetes-admin@kubernetes, Namespace: _all, Hit Role: admin
+I1124 20:03:55.071317 4130527 reflector.go:358] "Starting reflector" logger="controller-runtime.cache" type="*v1beta1.NodeMetrics" resyncPeriod="10h56m12.128463586s" reflector="k8s.io/client-go@v0.34.1/tools/cache/reflector.go:290"
+I1124 20:03:55.071463 4130527 reflector.go:404] "Listing and watching" logger="controller-runtime.cache" type="*v1beta1.NodeMetrics" reflector="k8s.io/client-go@v0.34.1/tools/cache/reflector.go:290"
+I1124 20:03:55.078767 4130527 reflector.go:436] "Caches populated" logger="controller-runtime.cache" type="*v1beta1.NodeMetrics" reflector="k8s.io/client-go@v0.34.1/tools/cache/reflector.go:290"
+127.0.0.1 - 2025-11-24 20:03:55 "GET /api/v1/nodes?reduce=true" 200 164.422902ms kubernetes-admin@kubernetes ssvd
+I1124 20:03:56.551599 4130527 reflector.go:404] "Listing and watching" logger="controller-runtime.cache" type="*v1beta1.NodeMetrics" reflector="k8s.io/client-go@v0.34.1/tools/cache/reflector.go:290"
+I1124 20:03:56.559160 4130527 reflector.go:436] "Caches populated" logger="controller-runtime.cache" type="*v1beta1.NodeMetrics" reflector="k8s.io/client-go@v0.34.1/tools/cache/reflector.go:290"
+I1124 20:03:57.858034 4130527 reflector.go:404] "Listing and watching" logger="controller-runtime.cache" type="*v1beta1.PodMetrics" reflector="k8s.io/client-go@v0.34.1/tools/cache/reflector.go:290"
+I1124 20:03:57.884798 4130527 reflector.go:436] "Caches populated" logger="controller-runtime.cache" type="*v1beta1.PodMetrics" reflector="k8s.io/client-go@v0.34.1/tools/cache/reflector.go:290"
+I1124 20:03:59.702639 4130527 reflector.go:404] "Listing and watching" logger="controller-runtime.cache" type="*v1beta1.NodeMetrics" reflector="k8s.io/client-go@v0.34.1/tools/cache/reflector.go:290"
+I1124 20:03:59.710859 4130527 reflector.go:436] "Caches populated" logger="controller-runtime.cache" type="*v1beta1.NodeMetrics" reflector="k8s.io/client-go@v0.34.1/tools/cache/reflector.go:290"
+I1124 20:04:00.324905 4130527 rbac.go:22] RBAC Check - User: ssvd, OIDC Groups: [], Resource: nodes, Verb: get, Cluster: kubernetes-admin@kubernetes, Namespace: _all, Hit Role: admin
+127.0.0.1 - 2025-11-24 20:04:00 "GET /api/v1/nodes?reduce=true" 200 32.139216ms kubernetes-admin@kubernetes ssvd
+I1124 20:04:03.526718 4130527 reflector.go:404] "Listing and watching" logger="controller-runtime.cache" type="*v1beta1.NodeMetrics" reflector="k8s.io/client-go@v0.34.1/tools/cache/reflector.go:290"
+I1124 20:04:03.533488 4130527 reflector.go:436] "Caches populated" logger="controller-runtime.cache" type="*v1beta1.NodeMetrics" reflector="k8s.io/client-go@v0.34.1/tools/cache/reflector.go:290"
+I1124 20:04:11.425364 4130527 reflector.go:404] "Listing and watching" logger="controller-runtime.cache" type="*v1beta1.NodeMetrics" reflector="k8s.io/client-go@v0.34.1/tools/cache/reflector.go:290"
+I1124 20:04:11.431644 4130527 reflector.go:436] "Caches populated" logger="controller-runtime.cache" type="*v1beta1.NodeMetrics" reflector="k8s.io/client-go@v0.34.1/tools/cache/reflector.go:290"
+I1124 20:04:15.391274 4130527 reflector.go:404] "Listing and watching" logger="controller-runtime.cache" type="*v1beta1.PodMetrics" reflector="k8s.io/client-go@v0.34.1/tools/cache/reflector.go:290"
+I1124 20:04:15.414073 4130527 reflector.go:436] "Caches populated" logger="controller-runtime.cache" type="*v1beta1.PodMetrics" reflector="k8s.io/client-go@v0.34.1/tools/cache/reflector.go:290"
+I1124 20:04:30.188572 4130527 reflector.go:404] "Listing and watching" logger="controller-runtime.cache" type="*v1beta1.NodeMetrics" reflector="k8s.io/client-go@v0.34.1/tools/cache/reflector.go:290"
+I1124 20:04:30.200281 4130527 reflector.go:436] "Caches populated" logger="controller-runtime.cache" type="*v1beta1.NodeMetrics" reflector="k8s.io/client-go@v0.34.1/tools/cache/reflector.go:290"
+I1124 20:04:53.541359 4130527 reflector.go:404] "Listing and watching" logger="controller-runtime.cache" type="*v1beta1.PodMetrics" reflector="k8s.io/client-go@v0.34.1/tools/cache/reflector.go:290"
+I1124 20:04:53.561660 4130527 reflector.go:436] "Caches populated" logger="controller-runtime.cache" type="*v1beta1.PodMetrics" reflector="k8s.io/client-go@v0.34.1/tools/cache/reflector.go:290"
+I1124 20:05:01.180604 4130527 reflector.go:404] "Listing and watching" logger="controller-runtime.cache" type="*v1beta1.NodeMetrics" reflector="k8s.io/client-go@v0.34.1/tools/cache/reflector.go:290"
+I1124 20:05:01.187058 4130527 reflector.go:436] "Caches populated" logger="controller-runtime.cache" type="*v1beta1.NodeMetrics" reflector="k8s.io/client-go@v0.34.1/tools/cache/reflector.go:290"
+I1124 20:05:31.282526 4130527 reflector.go:404] "Listing and watching" logger="controller-runtime.cache" type="*v1beta1.PodMetrics" reflector="k8s.io/client-go@v0.34.1/tools/cache/reflector.go:290"
+I1124 20:05:31.300901 4130527 reflector.go:436] "Caches populated" logger="controller-runtime.cache" type="*v1beta1.PodMetrics" reflector="k8s.io/client-go@v0.34.1/tools/cache/reflector.go:290"
+I1124 20:05:31.313711 4130527 main.go:274] Shutting down server...
+127.0.0.1 - 2025-11-24 20:05:45 "GET /api/v1/nodes?reduce=true" 500 49.839104ms kubernetes-admin@kubernetes ssvd
+127.0.0.1 - 2025-11-24 20:05:48 "GET /api/v1/nodes?reduce=true" 200 175.096487ms kubernetes-admin@kubernetes ssvd
+127.0.0.1 - 2025-11-24 20:05:53 "GET /api/v1/nodes?reduce=true" 200 67.845416ms kubernetes-admin@kubernetes ssvd
+127.0.0.1 - 2025-11-24 20:05:53 "GET /api/v1/admin/oauth-providers/" 200 112.916µs - ssvd
+127.0.0.1 - 2025-11-24 20:05:53 "GET /api/v1/admin/clusters/" 200 193.814µs - ssvd
+127.0.0.1 - 2025-11-24 20:05:53 "GET /api/v1/admin/roles/" 200 251.535µs - ssvd
+127.0.0.1 - 2025-11-24 20:05:53 "GET /api/v1/events?limit=20" 200 101.481776ms kubernetes-admin@kubernetes ssvd
+127.0.0.1 - 2025-11-24 20:05:54 "GET /api/v1/overview" 200 150.012446ms kubernetes-admin@kubernetes ssvd
+127.0.0.1 - 2025-11-24 20:06:37 "GET /api/v1/admin/clusters/" 200 404.443µs - ssvd
+127.0.0.1 - 2025-11-24 20:06:37 "GET /api/v1/admin/oauth-providers/" 200 352.033µs - ssvd
+127.0.0.1 - 2025-11-24 20:06:37 "GET /api/v1/admin/roles/" 200 1.019179ms - ssvd
+127.0.0.1 - 2025-11-24 20:06:37 "GET /api/v1/events?limit=20" 200 102.078121ms kubernetes-admin@kubernetes ssvd
+127.0.0.1 - 2025-11-24 20:06:37 "GET /api/v1/overview" 200 263.941604ms kubernetes-admin@kubernetes ssvd
+127.0.0.1 - 2025-11-24 20:06:42 "GET /api/v1/namespaces" 200 2.238318ms kubernetes-admin@kubernetes ssvd
+127.0.0.1 - 2025-11-24 20:06:42 "GET /api/v1/pods/kite?reduce=true" 200 105.981432ms kubernetes-admin@kubernetes ssvd
+127.0.0.1 - 2025-11-24 20:06:47 "GET /api/v1/pods/kite?reduce=true" 200 668.634µs kubernetes-admin@kubernetes ssvd
+127.0.0.1 - 2025-11-24 20:06:52 "GET /api/v1/pods/kite?reduce=true" 200 589.93µs kubernetes-admin@kubernetes ssvd
+127.0.0.1 - 2025-11-24 20:06:57 "GET /api/v1/pods/kite?reduce=true" 200 249.483µs kubernetes-admin@kubernetes ssvd
+127.0.0.1 - 2025-11-24 20:07:10 "GET /api/v1/pods/kite?reduce=true" 200 204.944µs kubernetes-admin@kubernetes ssvd
+127.0.0.1 - 2025-11-24 20:07:10 "GET /api/v1/namespaces" 200 687.198µs kubernetes-admin@kubernetes ssvd
+127.0.0.1 - 2025-11-24 20:07:20 "GET /api/v1/pods/kite?reduce=true" 200 188.488µs kubernetes-admin@kubernetes ssvd
+127.0.0.1 - 2025-11-24 20:07:20 "GET /api/v1/namespaces" 200 900.55µs kubernetes-admin@kubernetes ssvd
+127.0.0.1 - 2025-11-24 20:07:21 "GET /api/v1/namespaces" 200 1.408315ms kubernetes-admin@kubernetes ssvd
+127.0.0.1 - 2025-11-24 20:07:21 "GET /api/v1/pods/kite?reduce=true" 200 448.984µs kubernetes-admin@kubernetes ssvd
+127.0.0.1 - 2025-11-24 20:07:23 "GET /api/v1/admin/clusters/" 200 522.478µs - ssvd
+127.0.0.1 - 2025-11-24 20:07:23 "GET /api/v1/admin/oauth-providers/" 200 94.607µs - ssvd
+127.0.0.1 - 2025-11-24 20:07:23 "GET /api/v1/events?limit=20" 200 289.447µs kubernetes-admin@kubernetes ssvd
+127.0.0.1 - 2025-11-24 20:07:23 "GET /api/v1/admin/roles/" 200 289.311µs - ssvd
+127.0.0.1 - 2025-11-24 20:07:23 "GET /api/v1/overview" 200 50.547003ms kubernetes-admin@kubernetes ssvd
+127.0.0.1 - 2025-11-24 20:14:09 "GET /api/v1/admin/oauth-providers/" 200 73.838µs - ssvd
+127.0.0.1 - 2025-11-24 20:14:09 "GET /api/v1/admin/clusters/" 200 149.625µs - ssvd
+127.0.0.1 - 2025-11-24 20:14:09 "GET /api/v1/admin/roles/" 200 360.259µs - ssvd
+127.0.0.1 - 2025-11-24 20:14:09 "GET /api/v1/events?limit=20" 200 395.592µs kubernetes-admin@kubernetes ssvd
+127.0.0.1 - 2025-11-24 20:14:09 "GET /api/v1/overview" 200 39.576029ms kubernetes-admin@kubernetes ssvd
+127.0.0.1 - 2025-11-24 20:18:02 "GET /api/v1/admin/clusters/" 200 140.702µs - ssvd
+127.0.0.1 - 2025-11-24 20:18:02 "GET /api/v1/events?limit=20" 200 249.235µs kubernetes-admin@kubernetes ssvd
+127.0.0.1 - 2025-11-24 20:18:02 "GET /api/v1/admin/oauth-providers/" 200 107.889µs - ssvd
+127.0.0.1 - 2025-11-24 20:18:02 "GET /api/v1/admin/roles/" 200 260.532µs - ssvd
+127.0.0.1 - 2025-11-24 20:18:03 "GET /api/v1/overview" 200 50.715056ms kubernetes-admin@kubernetes ssvd
+127.0.0.1 - 2025-11-24 20:18:03 "GET /api/v1/admin/clusters/" 200 432.335µs - ssvd
+127.0.0.1 - 2025-11-24 20:18:03 "GET /api/v1/admin/oauth-providers/" 200 225.3µs - ssvd
+127.0.0.1 - 2025-11-24 20:18:03 "GET /api/v1/admin/roles/" 200 819.329µs - ssvd
+127.0.0.1 - 2025-11-24 20:18:03 "GET /api/v1/events?limit=20" 200 824.131µs kubernetes-admin@kubernetes ssvd
+127.0.0.1 - 2025-11-24 20:18:04 "GET /api/v1/overview" 200 71.826062ms kubernetes-admin@kubernetes ssvd
+127.0.0.1 - 2025-11-24 20:18:20 "POST /api/v1/resources/apply" 500 24.709203ms kubernetes-admin@kubernetes ssvd
+127.0.0.1 - 2025-11-24 20:18:34 "GET /api/v1/overview" 200 55.040397ms kubernetes-admin@kubernetes ssvd
+127.0.0.1 - 2025-11-24 20:18:36 "POST /api/v1/resources/apply" 200 47.012937ms kubernetes-admin@kubernetes ssvd
+127.0.0.1 - 2025-11-24 20:18:38 "GET /api/v1/namespaces" 200 1.966946ms kubernetes-admin@kubernetes ssvd
+127.0.0.1 - 2025-11-24 20:18:38 "GET /api/v1/pods/kite?reduce=true" 200 549.34µs kubernetes-admin@kubernetes ssvd
+127.0.0.1 - 2025-11-24 20:18:43 "GET /api/v1/pods/_all?reduce=true" 200 49.100805ms kubernetes-admin@kubernetes ssvd
+127.0.0.1 - 2025-11-24 20:18:46 "GET /api/v1/pods/default/example-pod" 200 519.278µs kubernetes-admin@kubernetes ssvd
+127.0.0.1 - 2025-11-24 20:19:09 "DELETE /api/v1/pods/default/example-pod" 200 18.008614566s kubernetes-admin@kubernetes ssvd
+127.0.0.1 - 2025-11-24 20:19:09 "GET /api/v1/namespaces" 200 1.592322ms kubernetes-admin@kubernetes ssvd
+127.0.0.1 - 2025-11-24 20:19:09 "GET /api/v1/pods/_all?reduce=true" 200 59.050667ms kubernetes-admin@kubernetes ssvd
+127.0.0.1 - 2025-11-24 20:19:14 "GET /api/v1/pods/_all?reduce=true" 200 55.97987ms kubernetes-admin@kubernetes ssvd
+127.0.0.1 - 2025-11-24 20:19:20 "GET /api/v1/pods/_all?reduce=true" 200 53.544006ms kubernetes-admin@kubernetes ssvd
+127.0.0.1 - 2025-11-24 20:19:25 "GET /api/v1/pods/_all?reduce=true" 200 59.151895ms kubernetes-admin@kubernetes ssvd
+127.0.0.1 - 2025-11-24 20:19:30 "GET /api/v1/pods/_all?reduce=true" 200 53.559693ms kubernetes-admin@kubernetes ssvd
+127.0.0.1 - 2025-11-24 20:19:35 "GET /api/v1/pods/_all?reduce=true" 200 67.029023ms kubernetes-admin@kubernetes ssvd
+127.0.0.1 - 2025-11-24 20:25:22 "GET /api/v1/namespaces" 200 713.356µs kubernetes-admin@kubernetes ssvd
+127.0.0.1 - 2025-11-24 20:25:22 "GET /api/v1/pods/_all?reduce=true" 200 70.569459ms kubernetes-admin@kubernetes ssvd
+127.0.0.1 - 2025-11-24 20:25:27 "GET /api/v1/pods/_all?reduce=true" 200 92.280001ms kubernetes-admin@kubernetes ssvd
+127.0.0.1 - 2025-11-24 20:25:33 "GET /api/v1/pods/_all?reduce=true" 200 91.785346ms kubernetes-admin@kubernetes ssvd
+127.0.0.1 - 2025-11-24 20:25:38 "GET /api/v1/pods/_all?reduce=true" 200 84.966821ms kubernetes-admin@kubernetes ssvd
+127.0.0.1 - 2025-11-24 20:25:40 "POST /api/v1/resources/apply" 500 25.517214ms kubernetes-admin@kubernetes ssvd
+127.0.0.1 - 2025-11-24 20:25:53 "GET /api/v1/namespaces" 200 410.578µs kubernetes-admin@kubernetes ssvd
+127.0.0.1 - 2025-11-24 20:25:54 "GET /api/v1/pods/_all?reduce=true" 200 53.080754ms kubernetes-admin@kubernetes ssvd
+127.0.0.1 - 2025-11-24 20:27:17 "GET /api/v1/namespaces" 200 1.763965ms kubernetes-admin@kubernetes ssvd
+127.0.0.1 - 2025-11-24 20:27:17 "GET /api/v1/pods/_all?reduce=true" 200 85.933453ms kubernetes-admin@kubernetes ssvd
+127.0.0.1 - 2025-11-24 20:27:18 "GET /api/v1/namespaces" 200 1.956449ms kubernetes-admin@kubernetes ssvd
+127.0.0.1 - 2025-11-24 20:27:18 "GET /api/v1/pods/_all?reduce=true" 200 82.643899ms kubernetes-admin@kubernetes ssvd
+127.0.0.1 - 2025-11-24 20:27:23 "GET /api/v1/pods/_all?reduce=true" 200 54.704517ms kubernetes-admin@kubernetes ssvd
+127.0.0.1 - 2025-11-24 20:27:28 "GET /api/v1/pods/_all?reduce=true" 200 53.676358ms kubernetes-admin@kubernetes ssvd
+127.0.0.1 - 2025-11-24 20:27:34 "GET /api/v1/pods/_all?reduce=true" 200 46.428489ms kubernetes-admin@kubernetes ssvd
+127.0.0.1 - 2025-11-24 20:27:39 "GET /api/v1/pods/_all?reduce=true" 200 60.513614ms kubernetes-admin@kubernetes ssvd
+127.0.0.1 - 2025-11-24 20:27:44 "GET /api/v1/pods/_all?reduce=true" 200 48.870656ms kubernetes-admin@kubernetes ssvd
+127.0.0.1 - 2025-11-24 20:27:48 "POST /api/v1/resources/apply" 200 30.918489ms kubernetes-admin@kubernetes ssvd
+127.0.0.1 - 2025-11-24 20:27:50 "GET /api/v1/pods/_all?reduce=true" 200 54.31304ms kubernetes-admin@kubernetes ssvd
+127.0.0.1 - 2025-11-24 20:27:55 "GET /api/v1/pods/_all?reduce=true" 200 52.865045ms kubernetes-admin@kubernetes ssvd
+127.0.0.1 - 2025-11-24 20:27:58 "GET /api/v1/pods/kite/example-pod" 200 389.999µs kubernetes-admin@kubernetes ssvd
+127.0.0.1 - 2025-11-24 20:28:21 "DELETE /api/v1/pods/kite/example-pod" 200 18.509870202s kubernetes-admin@kubernetes ssvd
+127.0.0.1 - 2025-11-24 20:28:22 "GET /api/v1/namespaces" 200 1.861512ms kubernetes-admin@kubernetes ssvd
+127.0.0.1 - 2025-11-24 20:28:22 "GET /api/v1/pods/_all?reduce=true" 200 55.456325ms kubernetes-admin@kubernetes ssvd
+127.0.0.1 - 2025-11-24 20:28:27 "GET /api/v1/pods/_all?reduce=true" 200 53.305988ms kubernetes-admin@kubernetes ssvd
+127.0.0.1 - 2025-11-24 20:28:32 "GET /api/v1/pods/_all?reduce=true" 200 60.869371ms kubernetes-admin@kubernetes ssvd
+127.0.0.1 - 2025-11-24 20:28:37 "GET /api/v1/pods/_all?reduce=true" 200 62.564405ms kubernetes-admin@kubernetes ssvd
+127.0.0.1 - 2025-11-24 20:28:43 "GET /api/v1/pods/_all?reduce=true" 200 89.410593ms kubernetes-admin@kubernetes ssvd
+127.0.0.1 - 2025-11-24 20:28:48 "GET /api/v1/pods/_all?reduce=true" 200 49.415161ms kubernetes-admin@kubernetes ssvd
+127.0.0.1 - 2025-11-24 20:32:26 "GET /api/v1/namespaces" 200 595.38µs kubernetes-admin@kubernetes ssvd
+127.0.0.1 - 2025-11-24 20:32:26 "GET /api/v1/pods/_all?reduce=true" 200 71.497377ms kubernetes-admin@kubernetes ssvd
+127.0.0.1 - 2025-11-24 20:32:27 "GET /api/v1/namespaces" 200 1.800354ms kubernetes-admin@kubernetes ssvd
+127.0.0.1 - 2025-11-24 20:32:27 "GET /api/v1/pods/_all?reduce=true" 200 62.442653ms kubernetes-admin@kubernetes ssvd
+127.0.0.1 - 2025-11-24 20:32:32 "GET /api/v1/pods/_all?reduce=true" 200 54.028678ms kubernetes-admin@kubernetes ssvd
+127.0.0.1 - 2025-11-24 20:32:37 "GET /api/v1/pods/_all?reduce=true" 200 52.984748ms kubernetes-admin@kubernetes ssvd
+127.0.0.1 - 2025-11-24 20:33:20 "GET /api/v1/namespaces" 200 1.692182ms kubernetes-admin@kubernetes ssvd
+127.0.0.1 - 2025-11-24 20:33:20 "GET /api/v1/pods/_all?reduce=true" 200 86.466399ms kubernetes-admin@kubernetes ssvd
+127.0.0.1 - 2025-11-24 20:35:45 "GET /api/v1/namespaces" 200 1.854055ms kubernetes-admin@kubernetes ssvd
+127.0.0.1 - 2025-11-24 20:35:45 "GET /api/v1/pods/_all?reduce=true" 200 54.537825ms kubernetes-admin@kubernetes ssvd
+127.0.0.1 - 2025-11-24 20:35:47 "GET /api/v1/admin/clusters/" 200 103.701µs - ssvd
+127.0.0.1 - 2025-11-24 20:35:47 "GET /api/v1/admin/oauth-providers/" 200 58.341µs - ssvd
+127.0.0.1 - 2025-11-24 20:35:47 "GET /api/v1/events?limit=20" 200 230.65µs kubernetes-admin@kubernetes ssvd
+127.0.0.1 - 2025-11-24 20:35:47 "GET /api/v1/admin/roles/" 200 225.078µs - ssvd
+127.0.0.1 - 2025-11-24 20:35:47 "GET /api/v1/overview" 200 30.861508ms kubernetes-admin@kubernetes ssvd
+127.0.0.1 - 2025-11-24 20:36:17 "GET /api/v1/overview" 200 29.190318ms kubernetes-admin@kubernetes ssvd
+127.0.0.1 - 2025-11-24 20:36:47 "GET /api/v1/overview" 200 47.745238ms kubernetes-admin@kubernetes ssvd
+127.0.0.1 - 2025-11-24 20:37:17 "GET /api/v1/overview" 200 35.870585ms kubernetes-admin@kubernetes ssvd
+127.0.0.1 - 2025-11-24 20:37:48 "GET /api/v1/overview" 200 38.882305ms kubernetes-admin@kubernetes ssvd
+127.0.0.1 - 2025-11-24 20:38:18 "GET /api/v1/overview" 200 35.447512ms kubernetes-admin@kubernetes ssvd
+127.0.0.1 - 2025-11-24 20:38:27 "GET /api/v1/namespaces" 200 2.325549ms kubernetes-admin@kubernetes ssvd
+127.0.0.1 - 2025-11-24 20:38:27 "GET /api/v1/pods/_all?reduce=true" 200 58.540234ms kubernetes-admin@kubernetes ssvd
+127.0.0.1 - 2025-11-24 20:38:29 "GET /api/v1/pods/crmapiautomation-default/crmcicd-au-default-29bfb073-0d4d-43b4-8b5d-b729ae350770-56cmf6p" 200 645.641µs kubernetes-admin@kubernetes ssvd
+127.0.0.1 - 2025-11-24 20:38:37 "GET /api/v1/admin/clusters/" 200 141.095µs - ssvd
+127.0.0.1 - 2025-11-24 20:38:37 "GET /api/v1/events?limit=20" 200 261.359µs kubernetes-admin@kubernetes ssvd
+127.0.0.1 - 2025-11-24 20:38:37 "GET /api/v1/admin/roles/" 200 301.228µs - ssvd
+127.0.0.1 - 2025-11-24 20:38:37 "GET /api/v1/admin/oauth-providers/" 200 71.141µs - ssvd
+127.0.0.1 - 2025-11-24 20:38:45 "POST /api/v1/resources/apply" 200 30.550226ms kubernetes-admin@kubernetes ssvd
+127.0.0.1 - 2025-11-24 20:38:49 "GET /api/v1/namespaces" 200 718.791µs kubernetes-admin@kubernetes ssvd
+127.0.0.1 - 2025-11-24 20:38:49 "GET /api/v1/services/_all?reduce=true" 200 6.239735ms kubernetes-admin@kubernetes ssvd
+127.0.0.1 - 2025-11-24 20:38:50 "GET /api/v1/services/default/example-service" 200 221.537µs kubernetes-admin@kubernetes ssvd
+127.0.0.1 - 2025-11-24 20:38:59 "DELETE /api/v1/services/default/example-service" 200 506.163804ms kubernetes-admin@kubernetes ssvd
+127.0.0.1 - 2025-11-24 20:38:59 "GET /api/v1/namespaces" 200 2.051071ms kubernetes-admin@kubernetes ssvd
+127.0.0.1 - 2025-11-24 20:38:59 "GET /api/v1/services/_all?reduce=true" 200 10.918184ms kubernetes-admin@kubernetes ssvd
+127.0.0.1 - 2025-11-24 20:39:02 "GET /api/v1/events?limit=20" 200 702.947µs kubernetes-admin@kubernetes ssvd
+127.0.0.1 - 2025-11-24 20:39:02 "GET /api/v1/overview" 200 30.514052ms kubernetes-admin@kubernetes ssvd
+127.0.0.1 - 2025-11-24 20:41:11 "GET /api/v1/admin/clusters/" 200 698.72µs - ssvd
+127.0.0.1 - 2025-11-24 20:41:11 "GET /api/v1/admin/roles/" 200 978.038µs - ssvd
+127.0.0.1 - 2025-11-24 20:41:11 "GET /api/v1/admin/oauth-providers/" 200 254.978µs - ssvd
+127.0.0.1 - 2025-11-24 20:41:11 "GET /api/v1/events?limit=20" 200 537.36µs kubernetes-admin@kubernetes ssvd
+127.0.0.1 - 2025-11-24 20:41:11 "GET /api/v1/overview" 200 48.836042ms kubernetes-admin@kubernetes ssvd
+127.0.0.1 - 2025-11-24 20:42:07 "GET /api/v1/admin/oauth-providers/" 200 62.265µs - ssvd
+127.0.0.1 - 2025-11-24 20:42:07 "GET /api/v1/admin/clusters/" 200 106.047µs - ssvd
+127.0.0.1 - 2025-11-24 20:42:07 "GET /api/v1/admin/roles/" 200 258.741µs - ssvd
+127.0.0.1 - 2025-11-24 20:42:07 "GET /api/v1/events?limit=20" 200 390.297µs kubernetes-admin@kubernetes ssvd
+127.0.0.1 - 2025-11-24 20:42:07 "GET /api/v1/overview" 200 41.300429ms kubernetes-admin@kubernetes ssvd
+127.0.0.1 - 2025-11-24 20:42:08 "GET /api/v1/admin/clusters/" 200 438.863µs - ssvd
+127.0.0.1 - 2025-11-24 20:42:08 "GET /api/v1/admin/oauth-providers/" 200 69.175µs - ssvd
+127.0.0.1 - 2025-11-24 20:42:08 "GET /api/v1/admin/roles/" 200 292.106µs - ssvd
+127.0.0.1 - 2025-11-24 20:42:08 "GET /api/v1/events?limit=20" 200 284.674µs kubernetes-admin@kubernetes ssvd
+127.0.0.1 - 2025-11-24 20:42:08 "GET /api/v1/overview" 200 46.499835ms kubernetes-admin@kubernetes ssvd
+127.0.0.1 - 2025-11-24 20:42:19 "POST /api/v1/resources/apply" 400 404.727µs kubernetes-admin@kubernetes ssvd
+127.0.0.1 - 2025-11-24 20:42:38 "GET /api/v1/overview" 200 30.137238ms kubernetes-admin@kubernetes ssvd
+127.0.0.1 - 2025-11-24 20:42:45 "POST /api/v1/resources/apply" 500 23.374901ms kubernetes-admin@kubernetes ssvd
+127.0.0.1 - 2025-11-24 20:43:08 "GET /api/v1/overview" 200 38.402017ms kubernetes-admin@kubernetes ssvd
+127.0.0.1 - 2025-11-24 20:43:15 "GET /api/v1/namespaces" 200 1.848674ms kubernetes-admin@kubernetes ssvd
+127.0.0.1 - 2025-11-24 20:43:15 "GET /api/v1/pods/_all?reduce=true" 200 59.954871ms kubernetes-admin@kubernetes ssvd
+127.0.0.1 - 2025-11-24 20:43:20 "GET /api/v1/pods/_all?reduce=true" 200 57.486301ms kubernetes-admin@kubernetes ssvd
+127.0.0.1 - 2025-11-24 20:43:24 "GET /api/v1/admin/oauth-providers/" 200 254.652µs - ssvd
+127.0.0.1 - 2025-11-24 20:43:24 "GET /api/v1/admin/clusters/" 200 436.886µs - ssvd
+127.0.0.1 - 2025-11-24 20:43:24 "GET /api/v1/admin/roles/" 200 997.454µs - ssvd
+127.0.0.1 - 2025-11-24 20:43:24 "GET /api/v1/events?limit=20" 200 1.245468ms kubernetes-admin@kubernetes ssvd

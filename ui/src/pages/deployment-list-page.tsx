@@ -1,20 +1,17 @@
-import { useCallback, useMemo, useState } from 'react'
+import { useCallback, useMemo } from 'react'
 import { createColumnHelper } from '@tanstack/react-table'
 import { Deployment } from 'kubernetes-types/apps/v1'
 import { useTranslation } from 'react-i18next'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link } from 'react-router-dom'
 
 import { getDeploymentStatus } from '@/lib/k8s'
 import { formatDate } from '@/lib/utils'
 import { Badge } from '@/components/ui/badge'
 import { DeploymentStatusIcon } from '@/components/deployment-status-icon'
-import { DeploymentCreateDialog } from '@/components/editors/deployment-create-dialog'
 import { ResourceTable } from '@/components/resource-table'
 
 export function DeploymentListPage() {
   const { t } = useTranslation()
-  const navigate = useNavigate()
-  const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false)
 
   // Define column helper outside of any hooks
   const columnHelper = createColumnHelper<Deployment>()
@@ -27,9 +24,8 @@ export function DeploymentListPage() {
         cell: ({ row }) => (
           <div className="font-medium text-blue-500 hover:underline">
             <Link
-              to={`/deployments/${row.original.metadata!.namespace}/${
-                row.original.metadata!.name
-              }`}
+              to={`/deployments/${row.original.metadata!.namespace}/${row.original.metadata!.name
+                }`}
             >
               {row.original.metadata!.name}
             </Link>
@@ -87,29 +83,13 @@ export function DeploymentListPage() {
     []
   )
 
-  const handleCreateClick = () => {
-    setIsCreateDialogOpen(true)
-  }
-
-  const handleCreateSuccess = (deployment: Deployment, namespace: string) => {
-    // Navigate to the newly created deployment's detail page
-    navigate(`/deployments/${namespace}/${deployment.metadata?.name}`)
-  }
-
   return (
     <>
       <ResourceTable
         resourceName="Deployments"
         columns={columns}
         searchQueryFilter={deploymentSearchFilter}
-        showCreateButton={true}
-        onCreateClick={handleCreateClick}
-      />
-
-      <DeploymentCreateDialog
-        open={isCreateDialogOpen}
-        onOpenChange={setIsCreateDialogOpen}
-        onSuccess={handleCreateSuccess}
+        showCreateButton={false}
       />
     </>
   )
