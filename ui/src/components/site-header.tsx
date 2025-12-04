@@ -1,6 +1,5 @@
-import { useState } from 'react'
 import { useAuth } from '@/contexts/auth-context'
-import { Plus, Settings } from 'lucide-react'
+import { Settings } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 
 import { useIsMobile } from '@/hooks/use-mobile'
@@ -19,7 +18,6 @@ export function SiteHeader() {
   const isMobile = useIsMobile()
   const navigate = useNavigate()
   const { user } = useAuth()
-  const [createDialogOpen, setCreateDialogOpen] = useState(false)
 
   return (
     <>
@@ -31,13 +29,12 @@ export function SiteHeader() {
             className="mx-2 data-[orientation=vertical]:h-4"
           />
           <DynamicBreadcrumb />
-          <div className="ml-auto flex items-center gap-2">
+          <div className="ml-auto flex items-center gap-2 sm:gap-4">
             <Search />
-            <Plus
-              className="h-5 w-5 cursor-pointer text-muted-foreground hover:text-foreground"
-              onClick={() => setCreateDialogOpen(true)}
-              aria-label="Create new resource"
-            />
+
+            {/* New Create Workload Button */}
+            <CreateResourceDialog />
+
             {!isMobile && (
               <>
                 <Separator
@@ -63,11 +60,6 @@ export function SiteHeader() {
           </div>
         </div>
       </header>
-
-      <CreateResourceDialog
-        open={createDialogOpen}
-        onOpenChange={setCreateDialogOpen}
-      />
     </>
   )
 }

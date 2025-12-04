@@ -1,0 +1,18 @@
+[INFO] 2025-12-04 20:54:38 | Logger initialized successfully
+[INFO] 2025-12-04 20:54:39 | Server started on port 8080
+[ACTIVITY] 2025-12-04 20:54:42 | [INFO] Cluster:kubernetes-admin@kubernetes | User:ssvd | Viewed cluster overview | Status:200
+[ACTIVITY] 2025-12-04 20:54:46 | [INFO] Cluster:kubernetes-admin@kubernetes | User:ssvd | Viewed cluster overview | Status:200
+[ACTIVITY] 2025-12-04 20:55:51 | [INFO] Cluster:kubernetes-admin@kubernetes | User:ssvd | Viewed cluster overview | Status:200
+[ACTIVITY] 2025-12-04 21:23:19 | [INFO] Cluster:kubernetes-admin@kubernetes | User:ssvd | Viewed cluster overview | Status:200
+[ACTIVITY] 2025-12-04 21:24:04 | [INFO] Cluster:kubernetes-admin@kubernetes | User:ssvd | Opened terminal for pod 'kite-debug-f7bcbcbbd-d9c6b' in namespace 'kite' | Status:200
+[ACTIVITY] 2025-12-04 21:24:07 | [INFO] Cluster:kubernetes-admin@kubernetes | User:ssvd | Viewed logs for pod 'kite-debug-f7bcbcbbd-d9c6b' in namespace 'kite' | Status:200
+[INFO] 2025-12-04 21:24:30 | Shutting down server gracefully...
+[INFO] 2025-12-04 21:24:30 | Server shutdown complete
+[INFO] 2025-12-04 21:24:36 | Logger initialized successfully
+[INFO] 2025-12-04 21:24:36 | Server started on port 8080
+[ACTIVITY] 2025-12-04 21:26:17 | [INFO] Cluster:kubernetes-admin@kubernetes | User:ssvd | Viewed logs for pod 'kite-795877d74b-5k5mk' in namespace 'kite' | Status:200
+[ACTIVITY] 2025-12-04 21:39:31 | [INFO] Cluster:kubernetes-admin@kubernetes | User:ssvd | Viewed logs for pod 'kite-795877d74b-5k5mk' in namespace 'kite' | Status:200
+[ACTIVITY] 2025-12-04 21:39:32 | [INFO] Cluster:kubernetes-admin@kubernetes | User:ssvd | Viewed cluster overview | Status:200
+[ACTIVITY] 2025-12-04 21:42:22 | [INFO] Cluster:kubernetes-admin@kubernetes | User:ssvd | Opened terminal for pod 'kite-795877d74b-5k5mk' in namespace 'kite' | Status:200
+[INFO] 2025-12-04 21:46:34 | Shutting down server gracefully...
+[INFO] 2025-12-04 21:46:34 | Server shutdown complete

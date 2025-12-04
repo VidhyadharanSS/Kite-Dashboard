@@ -1,5 +1,3 @@
-// Kubernetes resource templates
-
 export interface ValidationRule {
   pattern: RegExp
   message: string
@@ -12,17 +10,35 @@ export interface ResourceTemplate {
   validationRules?: ValidationRule[]
 }
 
-// --- Strict Validation Rules ---
 
-const standardWorkloadRules: ValidationRule[] = [
-  // Security Context Rules
+
+const standardSecurityRules: ValidationRule[] = [
+
   {
     pattern: /runAsUser:\s*1000/,
-    message: "Security Policy: 'runAsUser: 1000' is mandatory and cannot be changed."
+    message: "Security Policy: 'runAsUser: 1000' is mandatory."
+  },
+  {
+    pattern: /runAsGroup:\s*3000/,
+    message: "Security Policy: 'runAsGroup: 3000' is mandatory."
+  },
+  {
+    pattern: /fsGroup:\s*2000/,
+    message: "Security Policy: 'fsGroup: 2000' is mandatory."
   },
   {
     pattern: /runAsNonRoot:\s*true/,
     message: "Security Policy: 'runAsNonRoot: true' is mandatory."
+  },
+  {
+    pattern: /type:\s*RuntimeDefault/,
+    message: "Security Policy: Seccomp profile 'type: RuntimeDefault' is mandatory."
+  },
+
+
+  {
+    pattern: /allowPrivilegeEscalation:\s*false/,
+    message: "Security Policy: 'allowPrivilegeEscalation: false' is mandatory."
   },
   {
     pattern: /readOnlyRootFilesystem:\s*true/,
@@ -31,15 +47,26 @@ const standardWorkloadRules: ValidationRule[] = [
   {
     pattern: /drop:\s*\n\s*-\s*ALL/,
     message: "Security Policy: Capabilities must drop 'ALL'."
-  },
-  // Resource Rules
+  }
+]
+
+// Regexes allow for optional quotes around values (e.g. "10Mi" or 10Mi)
+const resourceRules: ValidationRule[] = [
   {
-    pattern: /requests:\s*\n\s*memory:\s*"?10Mi"?/,
+    pattern: /memory:\s*["']?10Mi["']?/,
     message: "Resource Policy: Memory requests must be defined (min 10Mi)."
   },
   {
-    pattern: /limits:\s*\n\s*memory:\s*"?20Mi"?/,
+    pattern: /memory:\s*["']?20Mi["']?/,
     message: "Resource Policy: Memory limits must be defined."
+  },
+  {
+    pattern: /cpu:\s*["']?10m["']?/,
+    message: "Resource Policy: CPU requests must be defined (min 10m)."
+  },
+  {
+    pattern: /cpu:\s*["']?20m["']?/,
+    message: "Resource Policy: CPU limits must be defined."
   }
 ]
 
@@ -54,13 +81,35 @@ const probeRules: ValidationRule[] = [
   }
 ]
 
+const productionRules: ValidationRule[] = [
+  {
+    pattern: /imagePullPolicy:\s*(Always|IfNotPresent)/,
+    message: "Best Practice: imagePullPolicy must be defined (Always or IfNotPresent)."
+  }
+]
+
+// Standard Workloads (Deployments, StatefulSets, Daemons, Pods)
+const workloadRules = [
+  ...standardSecurityRules,
+  ...resourceRules,
+  ...probeRules,
+  ...productionRules
+]
+
+// Batch Workloads (Jobs/CronJobs - usually don't have probes/services)
+const batchRules = [
+  ...standardSecurityRules,
+  ...resourceRules,
+  ...productionRules
+]
+
 // --- Templates ---
 
 export const resourceTemplates: ResourceTemplate[] = [
   {
     name: 'Pod',
-    description: 'A secure Pod with resources and probes',
-    validationRules: [...standardWorkloadRules, ...probeRules],
+    description: 'A secure Pod with resources, probes, and lifecycle settings',
+    validationRules: workloadRules,
     yaml: `apiVersion: v1
 kind: Pod
 metadata:
@@ -108,18 +157,22 @@ spec:
         path: /
         port: 80
       initialDelaySeconds: 3
-      periodSeconds: 3
+      periodSeconds: 10
+      timeoutSeconds: 1
+      failureThreshold: 3
     readinessProbe:
       httpGet:
         path: /
         port: 80
       initialDelaySeconds: 3
-      periodSeconds: 3`,
+      periodSeconds: 10
+      timeoutSeconds: 1
+      failureThreshold: 3`,
   },
   {
     name: 'Deployment',
-    description: 'A secure Deployment with strategies and probes',
-    validationRules: [...standardWorkloadRules, ...probeRules],
+    description: 'A secure Deployment with rolling update strategy',
+    validationRules: workloadRules,
     yaml: `apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -127,6 +180,7 @@ metadata:
   namespace: default
   labels:
     app: example
+    version: v1
 spec:
   replicas: 3
   revisionHistoryLimit: 10
@@ -145,17 +199,21 @@ spec:
         app: example
     spec:
       terminationGracePeriodSeconds: 30
+      dnsPolicy: ClusterFirst
       securityContext:
         runAsUser: 1000
         runAsGroup: 3000
         fsGroup: 2000
         runAsNonRoot: true
+        seccompProfile:
+          type: RuntimeDefault
       containers:
       - name: app
         image: ""
         imagePullPolicy: Always
         ports:
         - containerPort: 80
+          name: http
           protocol: TCP
         env:
         - name: ENVIRONMENT
@@ -186,19 +244,22 @@ spec:
   },
   {
     name: 'StatefulSet',
-    description: 'A secure StatefulSet with persistent storage',
-    validationRules: standardWorkloadRules,
+    description: 'A secure StatefulSet with ordered ready policy',
+    validationRules: workloadRules,
     yaml: `apiVersion: apps/v1
 kind: StatefulSet
 metadata:
   name: example-statefulset
   namespace: default
+  labels:
+    app: example
 spec:
   serviceName: "example-service"
   replicas: 3
   podManagementPolicy: OrderedReady
   updateStrategy:
     type: RollingUpdate
+  revisionHistoryLimit: 10
   selector:
     matchLabels:
       app: example
@@ -213,11 +274,15 @@ spec:
         runAsGroup: 3000
         fsGroup: 2000
         runAsNonRoot: true
+        seccompProfile:
+          type: RuntimeDefault
       containers:
       - name: app
         image: ""
+        imagePullPolicy: IfNotPresent
         ports:
         - containerPort: 80
+          name: http
         volumeMounts:
         - name: data
           mountPath: /data
@@ -234,6 +299,18 @@ spec:
           limits:
             memory: "20Mi"
             cpu: "20m"
+        livenessProbe:
+          httpGet:
+            path: /
+            port: 80
+          initialDelaySeconds: 10
+          periodSeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /
+            port: 80
+          initialDelaySeconds: 10
+          periodSeconds: 10
   volumeClaimTemplates:
   - metadata:
       name: data
@@ -246,13 +323,15 @@ spec:
   },
   {
     name: 'Job',
-    description: 'A secure Job task',
-    validationRules: standardWorkloadRules,
+    description: 'A secure Job task with parallelism and backoff',
+    validationRules: batchRules,
     yaml: `apiVersion: batch/v1
 kind: Job
 metadata:
   name: example-job
   namespace: default
+  labels:
+    app: example-job
 spec:
   completions: 1
   parallelism: 1
@@ -260,11 +339,18 @@ spec:
   activeDeadlineSeconds: 100
   ttlSecondsAfterFinished: 300
   template:
+    metadata:
+      labels:
+        app: example-job
     spec:
       restartPolicy: Never
       securityContext:
         runAsUser: 1000
+        runAsGroup: 3000
+        fsGroup: 2000
         runAsNonRoot: true
+        seccompProfile:
+          type: RuntimeDefault
       containers:
       - name: task
         image: ""
@@ -285,13 +371,15 @@ spec:
   },
   {
     name: 'CronJob',
-    description: 'A secure scheduled CronJob',
-    validationRules: standardWorkloadRules,
+    description: 'A secure scheduled CronJob with history limits',
+    validationRules: batchRules,
     yaml: `apiVersion: batch/v1
 kind: CronJob
 metadata:
   name: example-cronjob
   namespace: default
+  labels:
+    app: example-cronjob
 spec:
   schedule: "0 2 * * *"
   concurrencyPolicy: Forbid
@@ -301,14 +389,22 @@ spec:
   jobTemplate:
     spec:
       template:
+        metadata:
+          labels:
+            app: example-cronjob
         spec:
           restartPolicy: OnFailure
           securityContext:
             runAsUser: 1000
+            runAsGroup: 3000
+            fsGroup: 2000
             runAsNonRoot: true
+            seccompProfile:
+              type: RuntimeDefault
           containers:
           - name: task
             image: ""
+            imagePullPolicy: IfNotPresent
             securityContext:
               allowPrivilegeEscalation: false
               capabilities:
@@ -325,7 +421,7 @@ spec:
   },
   {
     name: 'Service',
-    description: 'A Service with session affinity',
+    description: 'A Service with session affinity and multiple ports',
     yaml: `apiVersion: v1
 kind: Service
 metadata:
@@ -338,15 +434,22 @@ spec:
     app: example
   type: ClusterIP
   sessionAffinity: None
+  sessionAffinityConfig:
+    clientIP:
+      timeoutSeconds: 10800
   ports:
   - name: http
     port: 80
     targetPort: 80
+    protocol: TCP
+  - name: https
+    port: 443
+    targetPort: 443
     protocol: TCP`,
   },
   {
     name: 'ConfigMap',
-    description: 'A ConfigMap',
+    description: 'A ConfigMap with standard configuration',
     yaml: `apiVersion: v1
 kind: ConfigMap
 metadata:
@@ -358,13 +461,15 @@ data:
   config.yaml: |
     server:
       port: 8080
+      host: "0.0.0.0"
     logging:
-      level: info`,
+      level: info
+      format: json`,
   },
   {
     name: 'Daemonset',
-    description: 'A secure DaemonSet',
-    validationRules: standardWorkloadRules,
+    description: 'A secure DaemonSet with update strategy',
+    validationRules: workloadRules,
     yaml: `apiVersion: apps/v1
 kind: DaemonSet
 metadata:
@@ -386,9 +491,14 @@ spec:
       labels:
         app: example
     spec:
+      terminationGracePeriodSeconds: 30
       securityContext:
         runAsUser: 1000
+        runAsGroup: 3000
+        fsGroup: 2000
         runAsNonRoot: true
+        seccompProfile:
+          type: RuntimeDefault
       containers:
         - name: agent
           image: ""
@@ -405,11 +515,27 @@ spec:
               cpu: "10m"
             limits:
               memory: "20Mi"
-              cpu: "20m"`,
+              cpu: "20m"
+          livenessProbe:
+            exec:
+              command:
+              - /bin/sh
+              - -c
+              - echo "healthy"
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          readinessProbe:
+            exec:
+              command:
+              - /bin/sh
+              - -c
+              - echo "ready"
+            initialDelaySeconds: 5
+            periodSeconds: 10`,
   },
   {
     name: 'Ingress',
-    description: 'An Ingress with standard annotations',
+    description: 'An Ingress with TLS and standard annotations',
     yaml: `apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
@@ -418,6 +544,7 @@ metadata:
   annotations:
     nginx.ingress.kubernetes.io/rewrite-target: /
     nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/proxy-body-size: "10m"
 spec:
   ingressClassName: nginx
   tls:

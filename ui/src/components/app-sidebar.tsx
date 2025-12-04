@@ -33,12 +33,24 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const { isMobile, setOpenMobile } = useSidebar()
   const { config, isLoading, getIconComponent } = useSidebarConfig()
 
+  // --- FIX: Filter function to hide Secrets ---
+  const isHidden = (id: string, url: string) => {
+    // Check global hidden items
+    if (config?.hiddenItems.includes(id)) return true
+
+    // Explicitly hide secrets
+    if (id === 'secrets' || url.includes('/secrets')) return true
+
+    return false
+  }
+  // --------------------------------------------
+
   const pinnedItems = useMemo(() => {
     if (!config) return []
     return config.groups
       .flatMap((group) => group.items)
       .filter((item) => config.pinnedItems.includes(item.id))
-      .filter((item) => !config.hiddenItems.includes(item.id))
+      .filter((item) => !isHidden(item.id, item.url)) // Apply fix
   }, [config])
 
   const visibleGroups = useMemo(() => {
@@ -49,8 +61,8 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       .map((group) => ({
         ...group,
         items: group.items
-          .filter((item) => !config.hiddenItems.includes(item.id))
           .filter((item) => !config.pinnedItems.includes(item.id))
+          .filter((item) => !isHidden(item.id, item.url)) // Apply fix
           .sort((a, b) => a.order - b.order),
       }))
       .filter((group) => group.items.length > 0)
@@ -66,7 +78,6 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
     return location.pathname.startsWith(url)
   }
 
-  // Handle menu item click on mobile - close sidebar
   const handleMenuItemClick = () => {
     if (isMobile) {
       setOpenMobile(false)
@@ -113,7 +124,6 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                       <span className="text-base font-semibold bg-gradient-to-r from-primary to-primary/70 bg-clip-text text-transparent">
                         Kites
                       </span>
-
                     </div>
                   </div>
                 </div>

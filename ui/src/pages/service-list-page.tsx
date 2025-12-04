@@ -22,9 +22,8 @@ export function ServiceListPage() {
         cell: ({ row }) => (
           <div className="font-medium text-blue-500 hover:underline">
             <Link
-              to={`/services/${row.original.metadata!.namespace}/${
-                row.original.metadata!.name
-              }`}
+              to={`/services/${row.original.metadata!.namespace}/${row.original.metadata!.name
+                }`}
             >
               {row.original.metadata!.name}
             </Link>
@@ -33,6 +32,7 @@ export function ServiceListPage() {
       }),
       columnHelper.accessor('spec.type', {
         header: t('services.type'),
+        enableColumnFilter: true,
         cell: ({ getValue }) => {
           const type = getValue() || 'ClusterIP'
           return <Badge variant="outline">{type}</Badge>

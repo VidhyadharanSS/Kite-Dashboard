@@ -13,6 +13,7 @@ const (
 )
 
 // ClusterMiddleware extracts cluster name from header and injects clients into context
+
 func ClusterMiddleware(cm *cluster.ClusterManager) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		clusterName := c.GetHeader(ClusterNameHeader)

@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"context"
 	"net/http"
 	"strings"
 
@@ -9,6 +10,7 @@ import (
 	"github.com/zxh326/kite/pkg/common"
 	"github.com/zxh326/kite/pkg/model"
 	"github.com/zxh326/kite/pkg/rbac"
+	"github.com/zxh326/kite/pkg/utils" // Ensure this import matches your module path
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime/serializer/yaml"
@@ -50,6 +52,12 @@ func (h *ResourceApplyHandler) ApplyResource(c *gin.Context) {
 		return
 	}
 
+	// === MUTATION LOGIC START ===
+	// This acts like a Mutating Admission Controller
+	// It injects security context, resources, and probes defaults
+	utils.EnforceSecurityPolicies(obj)
+	// === MUTATION LOGIC END ===
+
 	resource := strings.ToLower(obj.GetKind()) + "s"
 	if !rbac.CanAccess(user, resource, "create", cs.Name, obj.GetNamespace()) {
 		c.JSON(http.StatusForbidden, gin.H{
@@ -79,13 +87,16 @@ func (h *ResourceApplyHandler) ApplyResource(c *gin.Context) {
 		if err != nil {
 			errMessage = err.Error()
 		}
+		// Log the modified YAML (obj) so we see what was actually applied after mutation
+		appliedYAML, _ := syaml.Marshal(obj)
+
 		model.DB.Create(&model.ResourceHistory{
 			ClusterName:   cs.Name,
 			ResourceType:  resource,
 			ResourceName:  obj.GetName(),
 			Namespace:     obj.GetNamespace(),
 			OperationType: "apply",
-			ResourceYAML:  req.YAML,
+			ResourceYAML:  string(appliedYAML), // Save the mutated YAML
 			PreviousYAML:  string(previousYAML),
 			OperatorID:    user.ID,
 			Success:       err == nil,
@@ -100,6 +111,12 @@ func (h *ResourceApplyHandler) ApplyResource(c *gin.Context) {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create resource: " + err.Error()})
 			return
 		}
+
+		// SPECIAL CASE: If we just created a Namespace, enforce Policy by creating a default ResourceQuota
+		if obj.GetKind() == "Namespace" {
+			go h.enforceNamespaceQuota(context.Background(), cs, obj.GetName())
+		}
+
 	case err == nil:
 		obj.SetResourceVersion(existingObj.GetResourceVersion())
 		if err := cs.K8sClient.Update(ctx, obj); err != nil {
@@ -115,9 +132,19 @@ func (h *ResourceApplyHandler) ApplyResource(c *gin.Context) {
 
 	klog.Infof("Successfully applied resource: %s/%s", obj.GetKind(), obj.GetName())
 	c.JSON(http.StatusOK, gin.H{
-		"message":   "Resource applied successfully",
+		"message":   "Resource applied successfully (Security Policies Enforced)",
 		"kind":      obj.GetKind(),
 		"name":      obj.GetName(),
 		"namespace": obj.GetNamespace(),
 	})
+}
+
+// enforceNamespaceQuota creates a default resource quota for new namespaces
+func (h *ResourceApplyHandler) enforceNamespaceQuota(ctx context.Context, cs *cluster.ClientSet, namespace string) {
+	quota := utils.GetDefaultResourceQuota(namespace)
+	if err := cs.K8sClient.Create(ctx, quota); err != nil {
+		klog.Errorf("Failed to create default quota for namespace %s: %v", namespace, err)
+	} else {
+		klog.Infof("Enforced default quota for new namespace: %s", namespace)
+	}
 }

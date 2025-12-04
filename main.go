@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
 	"time"
 
@@ -24,6 +25,7 @@ import (
 	"github.com/zxh326/kite/pkg/common"
 	"github.com/zxh326/kite/pkg/handlers"
 	"github.com/zxh326/kite/pkg/handlers/resources"
+	"github.com/zxh326/kite/pkg/logx"
 	"github.com/zxh326/kite/pkg/middleware"
 	"github.com/zxh326/kite/pkg/model"
 	"github.com/zxh326/kite/pkg/rbac"
@@ -35,6 +37,61 @@ import (
 
 //go:embed static
 var static embed.FS
+
+// SecurityMiddleware restricts sensitive routes and YAML content
+func SecurityMiddleware() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		path := c.Request.URL.Path
+		method := c.Request.Method
+		contentType := c.GetHeader("Content-Type")
+
+		// Restrict YAML requests (force JSON)
+		if strings.Contains(contentType, "yaml") || strings.Contains(contentType, "yml") {
+			c.JSON(http.StatusUnsupportedMediaType, gin.H{"error": "YAML support has been removed. Please use JSON templates."})
+			c.Abort()
+			return
+		}
+
+		// Protect Secrets
+		if strings.Contains(path, "/secrets") {
+			c.JSON(http.StatusForbidden, gin.H{"error": "Access to Secrets is restricted in this environment."})
+			c.Abort()
+			return
+		}
+
+		// Protect Node Cordon/Taint
+		if strings.Contains(path, "/nodes/") && (method == http.MethodPatch || method == http.MethodPut) {
+			c.JSON(http.StatusForbidden, gin.H{"error": "Sensitive node operations (Cordon/Taint) are restricted via Dashboard."})
+			c.Abort()
+			return
+		}
+
+		c.Next()
+	}
+}
+
+// WebsocketAwareGzipMiddleware checks headers to skip gzip for websockets completely
+func WebsocketAwareGzipMiddleware() gin.HandlerFunc {
+	gzipHandler := gzip.Gzip(gzip.DefaultCompression, gzip.WithExcludedPaths([]string{
+		"/metrics",
+		"/api/v1/logs",
+		"/api/v1/terminal",
+		"/api/v1/node-terminal",
+	}))
+
+	return func(c *gin.Context) {
+		// If it is a WebSocket connection request, skip GZIP entirely
+		if c.IsWebsocket() ||
+			strings.ToLower(c.GetHeader("Upgrade")) == "websocket" ||
+			strings.Contains(strings.ToLower(c.GetHeader("Connection")), "upgrade") {
+			c.Next()
+			return
+		}
+
+		// Otherwise, use the GZIP handler
+		gzipHandler(c)
+	}
+}
 
 func setupStatic(r *gin.Engine) {
 	base := common.Base
@@ -108,7 +165,9 @@ func setupAPIRouter(r *gin.RouterGroup, cm *cluster.ClusterManager) {
 	// Once users are configured, this API cannot be used.
 	adminAPI.POST("/users/create_super_user", handlers.CreateSuperUser)
 	adminAPI.POST("/clusters/import", cm.ImportClustersFromKubeconfig)
-	adminAPI.Use(authHandler.RequireAuth(), middleware.AuditLogger(), authHandler.RequireAdmin())
+
+	// Add SecurityMiddleware and AuditLogger here
+	adminAPI.Use(authHandler.RequireAuth(), middleware.AuditLogger(), SecurityMiddleware(), authHandler.RequireAdmin())
 	{
 		oauthProviderAPI := adminAPI.Group("/oauth-providers")
 		{
@@ -160,7 +219,9 @@ func setupAPIRouter(r *gin.RouterGroup, cm *cluster.ClusterManager) {
 	// API routes group (protected)
 	api := r.Group("/api/v1")
 	api.GET("/clusters", authHandler.RequireAuth(), cm.GetClusters)
-	api.Use(authHandler.RequireAuth(), middleware.AuditLogger(), middleware.ClusterMiddleware(cm))
+
+	// Add SecurityMiddleware and AuditLogger here
+	api.Use(authHandler.RequireAuth(), middleware.AuditLogger(), SecurityMiddleware(), middleware.ClusterMiddleware(cm))
 	{
 		api.GET("/overview", handlers.GetOverview)
 
@@ -196,19 +257,44 @@ func setupAPIRouter(r *gin.RouterGroup, cm *cluster.ClusterManager) {
 func main() {
 	klog.InitFlags(nil)
 	flag.Parse()
+
+	// ===== INITIALIZE LOGGER =====
+	// Initialize rotating logs in the "logs" directory
+	if err := logx.Init("logs"); err != nil {
+		log.Fatalf("Failed to initialize logger: %v", err)
+	}
+	defer logx.Close()
+	logx.Info("Logger initialized successfully")
+	// =============================
+
 	go func() {
 		log.Println(http.ListenAndServe("localhost:6060", nil))
 	}()
 	common.LoadEnvs()
+
 	gin.SetMode(gin.ReleaseMode)
 	r := gin.New()
+
+	// --- FIX: TRUSTED PROXIES ---
+	// Required for Ingress-Nginx to pass correct headers/WebSockets
+	r.SetTrustedProxies(nil)
+	// ----------------------------
+
 	r.Use(middleware.Metrics())
+
+	// FIX: Smart GZIP Middleware
+	// Explicitly checks for WebSocket headers to prevent gzip interference with logs/terminals
 	if !common.DisableGZIP {
-		klog.Info("GZIP compression is enabled")
-		r.Use(gzip.Gzip(gzip.DefaultCompression, gzip.WithExcludedPaths([]string{"/metrics"})))
+		klog.Info("GZIP compression is enabled (WebSockets excluded)")
+		r.Use(WebsocketAwareGzipMiddleware())
 	}
+
+	// Use RecoveryWithLog if available (optional) or standard Recovery
 	r.Use(gin.Recovery())
-	r.Use(middleware.Logger())
+
+	// REPLACE Default Logger with Rotating Access Logger
+	r.Use(middleware.AccessLogger())
+
 	r.Use(middleware.CORS())
 	model.InitDB()
 	rbac.InitRBAC()
@@ -236,15 +322,19 @@ func main() {
 	klog.Infof("Kite server started on port %s", common.Port)
 	klog.Infof("Version: %s, Build Date: %s, Commit: %s",
 		version.Version, version.BuildDate, version.CommitID)
+	logx.Info("Server started on port %s", common.Port)
 
 	quit := make(chan os.Signal, 1)
 	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
 	<-quit
 
 	klog.Info("Shutting down server...")
+	logx.Info("Shutting down server gracefully...")
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 	if err := srv.Shutdown(ctx); err != nil {
 		klog.Fatalf("Failed to shutdown server: %v", err)
+		logx.Error("Failed to shutdown server: %v", err)
 	}
+	logx.Info("Server shutdown complete")
 }
