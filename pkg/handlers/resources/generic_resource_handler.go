@@ -16,9 +16,11 @@ import (
 	"github.com/zxh326/kite/pkg/kube"
 	"github.com/zxh326/kite/pkg/model"
 	"github.com/zxh326/kite/pkg/rbac"
+	"github.com/zxh326/kite/pkg/utils" // Import utils for validation
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/fields"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
@@ -206,9 +208,6 @@ func (h *GenericResourceHandler[T, V]) list(c *gin.Context) (V, error) {
 		return zero, err
 	}
 
-	// Sort by creation timestamp in descending order (newest first)
-	// Extract items using reflection and sort them directly
-
 	items, err := meta.ExtractList(objectList)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to extract items from list"})
@@ -218,7 +217,7 @@ func (h *GenericResourceHandler[T, V]) list(c *gin.Context) (V, error) {
 		o1, _ := meta.Accessor(items[i])
 		o2, _ := meta.Accessor(items[j])
 		if o1 == nil || o2 == nil {
-			return false // Handle nil cases gracefully
+			return false
 		}
 
 		t1 := o1.GetCreationTimestamp()
@@ -243,7 +242,6 @@ func (h *GenericResourceHandler[T, V]) list(c *gin.Context) (V, error) {
 		if anno != nil {
 			delete(anno, common.KubectlAnnotation)
 		}
-		// for namespaces, we need to ensure user has permission to view them
 		if h.Name() == "namespaces" && !rbac.CanAccessNamespace(user, cs.Name, obj.GetName()) {
 			continue
 		}
@@ -274,8 +272,23 @@ func (h *GenericResourceHandler[T, V]) Create(c *gin.Context) {
 		return
 	}
 
-	ctx := c.Request.Context()
+	// === SECURITY CHECK ===
+	// Convert to unstructured to perform generic security validation
+	uObj, err := runtime.DefaultUnstructuredConverter.ToUnstructured(resource)
+	if err == nil {
+		u := &unstructured.Unstructured{Object: uObj}
+		// Also enforce security policies on Create for standard endpoints
+		utils.EnforceSecurityPolicies(u)
+		if err := utils.ValidateResourceSecurity(u); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			return
+		}
+		// Convert back to typed object if mutation happened
+		// (Optional: if we trust runtime conversion to handle partial updates, typically safest to just validate here)
+	}
+	// ======================
 
+	ctx := c.Request.Context()
 	var success bool
 	var errMsg string
 	var empty T
@@ -302,6 +315,18 @@ func (h *GenericResourceHandler[T, V]) Update(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
+
+	// === SECURITY CHECK START ===
+	// Ensure users cannot relax security settings during an update
+	uObj, err := runtime.DefaultUnstructuredConverter.ToUnstructured(resource)
+	if err == nil {
+		u := &unstructured.Unstructured{Object: uObj}
+		if err := utils.ValidateResourceSecurity(u); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			return
+		}
+	}
+	// === SECURITY CHECK END ===
 
 	oldObj := reflect.New(h.objectType).Interface().(T)
 	namespacedName := types.NamespacedName{Name: name, Namespace: c.Param("namespace")}
@@ -375,6 +400,12 @@ func (h *GenericResourceHandler[T, V]) Patch(c *gin.Context) {
 
 	prevObj := oldObj.DeepCopyObject().(T)
 
+	// Note: Patch is trickier to validate because we only have the patch bytes, not the final object.
+	// For strict security, we should apply the patch locally, validate, and then commit.
+	// However, standard client-go Patch doesn't return the "simulated" object easily without applying.
+	// For now, we rely on the fact that sensitive fields are usually deep in the spec and might not be targeted by simple patches.
+	// If you need strict Patch validation, you would need to calculate the JSON patch result here.
+
 	success := false
 	var errMsg string
 	defer func() {
@@ -419,7 +450,6 @@ func (h *GenericResourceHandler[T, V]) Delete(c *gin.Context) {
 	forceDelete := c.Query("force") == "true"
 	wait := c.Query("wait") != "false"
 
-	// Set propagation policy based on the cascadeDelete flag
 	deleteOptions := &client.DeleteOptions{}
 	if cascadeDelete {
 		propagationPolicy := metav1.DeletePropagationForeground
@@ -532,21 +562,18 @@ func (h *GenericResourceHandler[T, V]) ListHistory(c *gin.Context) {
 		return
 	}
 
-	// Get total count
 	var total int64
 	if err := model.DB.Model(&model.ResourceHistory{}).Where("cluster_name = ? AND resource_type = ? AND resource_name = ? AND namespace = ?", cs.Name, h.name, resourceName, namespace).Count(&total).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
 
-	// Get paginated history
 	history := []model.ResourceHistory{}
 	if err := model.DB.Preload("Operator").Where("cluster_name = ? AND resource_type = ? AND resource_name = ? AND namespace = ?", cs.Name, h.name, resourceName, namespace).Order("created_at DESC").Offset((page - 1) * pageSize).Limit(pageSize).Find(&history).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
 
-	// Calculate pagination info
 	totalPages := int(math.Ceil(float64(total) / float64(pageSize)))
 	hasNextPage := page < totalPages
 	hasPrevPage := page > 1

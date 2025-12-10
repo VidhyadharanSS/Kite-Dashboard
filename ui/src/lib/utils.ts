@@ -7,6 +7,19 @@ import { twMerge } from 'tailwind-merge'
 import { PodMetrics } from '@/types/api'
 import { NodeConditionType } from '@/types/k8s'
 
+// --- Security Constants ---
+export const SENSITIVE_PATHS = [
+  '/',
+  '/boot',
+  '/proc',
+  '/etc',
+  '/var',
+  '/sys',
+  '/dev',
+  '/usr',
+  '/run',
+]
+
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
 }
@@ -266,5 +279,16 @@ export function enrichNodeConditionsWithHealth(data: NodeCondition[]) {
             : item.status
         : item.status,
     }
+  })
+}
+
+/**
+ * Validates if a host path is sensitive
+ */
+export function isSensitivePath(path: string): boolean {
+  const cleanPath = path.trim()
+  return SENSITIVE_PATHS.some((sensitive) => {
+    // Exact match or subdirectory match (e.g. /etc or /etc/passwd)
+    return cleanPath === sensitive || cleanPath.startsWith(`${sensitive}/`)
   })
 }

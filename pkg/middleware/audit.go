@@ -11,22 +11,18 @@ import (
 	"github.com/zxh326/kite/pkg/model"
 )
 
-// AuditLogger logs user activities in the Kite UI (not HTTP details)
 func AuditLogger() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		path := c.Request.URL.Path
 		method := c.Request.Method
 		query := c.Request.URL.Query()
 
-		// Process the request
 		c.Next()
 
-		// Only log significant user activities, not every HTTP request
 		if !shouldLogUserActivity(method, path) {
 			return
 		}
 
-		// Get user identity
 		userIdentity := "unauthenticated"
 		if u, exists := c.Get("user"); exists {
 			if user, ok := u.(model.User); ok {
@@ -34,7 +30,6 @@ func AuditLogger() gin.HandlerFunc {
 			}
 		}
 
-		// Get cluster name
 		cluster := "-"
 		if v, exists := c.Get(ClusterNameKey); exists {
 			if cName, ok := v.(string); ok {
@@ -42,13 +37,11 @@ func AuditLogger() gin.HandlerFunc {
 			}
 		}
 
-		// Parse activity from path
 		activity := parseUserActivity(method, path, query)
 		if activity == "" {
 			return
 		}
 
-		// Log user activity
 		statusCode := c.Writer.Status()
 		level := "INFO"
 		if statusCode >= 500 {
@@ -62,30 +55,26 @@ func AuditLogger() gin.HandlerFunc {
 	}
 }
 
-// shouldLogUserActivity determines if a request represents a user activity worth logging
 func shouldLogUserActivity(method, path string) bool {
-	// Log authentication activities
+
 	if strings.Contains(path, "/api/auth/login") ||
 		strings.Contains(path, "/api/auth/logout") {
 		return true
 	}
 
-	// Log terminal (pod and node) and log viewer access
 	if strings.Contains(path, "/terminal/") ||
 		strings.Contains(path, "/node-terminal/") ||
 		strings.Contains(path, "/logs/") {
 		return true
 	}
 
-	// Log Global Search
 	if strings.Contains(path, "/api/v1/search") {
 		return true
 	}
 
-	// Log resource modifications (POST, PUT, PATCH, DELETE)
 	if method == http.MethodPost || method == http.MethodPut ||
 		method == http.MethodPatch || method == http.MethodDelete {
-		// Skip auth token refresh and health checks
+
 		if strings.Contains(path, "/refresh") ||
 			strings.Contains(path, "/healthz") ||
 			strings.Contains(path, "/metrics") {
@@ -94,7 +83,6 @@ func shouldLogUserActivity(method, path string) bool {
 		return true
 	}
 
-	// Log specific GET operations that represent user actions
 	if strings.Contains(path, "/overview") ||
 		strings.Contains(path, "/image/tags") {
 		return true
@@ -103,9 +91,8 @@ func shouldLogUserActivity(method, path string) bool {
 	return false
 }
 
-// parseUserActivity converts HTTP path into human-readable activity
 func parseUserActivity(method, path string, query url.Values) string {
-	// Clean query parameters from path for parsing logic
+
 	cleanPath := path
 	if idx := strings.Index(cleanPath, "?"); idx != -1 {
 		cleanPath = cleanPath[:idx]
@@ -113,7 +100,6 @@ func parseUserActivity(method, path string, query url.Values) string {
 
 	parts := strings.Split(strings.Trim(cleanPath, "/"), "/")
 
-	// Authentication activities
 	if strings.Contains(path, "/api/auth/login") {
 		return "User logged in"
 	}
@@ -121,7 +107,6 @@ func parseUserActivity(method, path string, query url.Values) string {
 		return "User logged out"
 	}
 
-	// Terminal access
 	if strings.Contains(path, "/terminal/") {
 		namespace, podName := extractNamespaceAndPod(cleanPath, "terminal")
 		return fmt.Sprintf("Opened terminal for pod '%s' in namespace '%s'", podName, namespace)
@@ -131,18 +116,15 @@ func parseUserActivity(method, path string, query url.Values) string {
 		return fmt.Sprintf("Opened terminal for node '%s'", nodeName)
 	}
 
-	// Log viewer access
 	if strings.Contains(path, "/logs/") {
 		namespace, podName := extractNamespaceAndPod(cleanPath, "logs")
 		return fmt.Sprintf("Viewed logs for pod '%s' in namespace '%s'", podName, namespace)
 	}
 
-	// Overview page
 	if strings.Contains(path, "/overview") {
 		return "Viewed cluster overview"
 	}
 
-	// Global Search
 	if strings.Contains(path, "/search") {
 		q := query.Get("q")
 		if q != "" {
@@ -151,20 +133,17 @@ func parseUserActivity(method, path string, query url.Values) string {
 		return "Performed global search"
 	}
 
-	// Image Tags
 	if strings.Contains(path, "/image/tags") {
 		image := query.Get("image")
 		return fmt.Sprintf("Looked up image tags for: '%s'", image)
 	}
 
-	// Resource Apply (Direct YAML/JSON apply)
 	if strings.Contains(path, "/resources/apply") && method == http.MethodPost {
 		return "Applied raw resource configuration"
 	}
 
-	// Standard Resource operations (CRUD)
 	if len(parts) >= 3 && parts[0] == "api" && parts[1] == "v1" {
-		// Check for Admin/Special routes first
+
 		if parts[2] == "admin" {
 			return parseAdminActivity(method, path)
 		}
@@ -189,7 +168,6 @@ func parseUserActivity(method, path string, query url.Values) string {
 	return ""
 }
 
-// extractNamespaceAndPod extracts namespace and pod name from paths
 func extractNamespaceAndPod(path, prefix string) (string, string) {
 	parts := strings.Split(strings.Trim(path, "/"), "/")
 	for i, part := range parts {
@@ -200,7 +178,6 @@ func extractNamespaceAndPod(path, prefix string) (string, string) {
 	return "unknown", "unknown"
 }
 
-// extractNodeName extracts node name from paths
 func extractNodeName(path, prefix string) string {
 	parts := strings.Split(strings.Trim(path, "/"), "/")
 	for i, part := range parts {
@@ -211,13 +188,11 @@ func extractNodeName(path, prefix string) string {
 	return "unknown"
 }
 
-// parseResourceFromParts parses resource details from API path parts
 func parseResourceFromParts(parts []string) (resourceType, namespace, resourceName string) {
 	if len(parts) == 0 {
 		return "-", "-", "-"
 	}
 
-	// Handle namespaced resources: /namespaces/{ns}/{resource}/{name}
 	if parts[0] == "namespaces" && len(parts) >= 3 {
 		namespace = parts[1]
 		resourceType = parts[2]
@@ -229,7 +204,6 @@ func parseResourceFromParts(parts []string) (resourceType, namespace, resourceNa
 		return resourceType, namespace, resourceName
 	}
 
-	// Handle cluster-scoped resources: /{resource}/{name}
 	resourceType = parts[0]
 	if len(parts) > 1 {
 		resourceName = parts[1]
@@ -239,7 +213,6 @@ func parseResourceFromParts(parts []string) (resourceType, namespace, resourceNa
 	return resourceType, "cluster-scope", resourceName
 }
 
-// parseAdminActivity parses admin-related activities
 func parseAdminActivity(method, path string) string {
 	if strings.Contains(path, "/clusters") {
 		switch method {

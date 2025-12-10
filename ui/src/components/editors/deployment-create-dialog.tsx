@@ -321,16 +321,16 @@ export function DeploymentCreateDialog({
         imagePullPolicy: containerConfig.pullPolicy,
         ...(containerConfig.container.env &&
           containerConfig.container.env.length > 0 && {
-            env: containerConfig.container.env.filter(
-              (env) => env.name && (env.value || env.valueFrom)
-            ),
-          }),
+          env: containerConfig.container.env.filter(
+            (env) => env.name && (env.value || env.valueFrom)
+          ),
+        }),
         ...(containerConfig.container.envFrom &&
           containerConfig.container.envFrom.length > 0 && {
-            envFrom: containerConfig.container.envFrom.filter(
-              (source) => source.configMapRef?.name || source.secretRef?.name
-            ),
-          }),
+          envFrom: containerConfig.container.envFrom.filter(
+            (source) => source.configMapRef?.name || source.secretRef?.name
+          ),
+        }),
         ...(containerConfig.port && {
           ports: [
             {
@@ -369,13 +369,13 @@ export function DeploymentCreateDialog({
         }),
         ...(containerConfig.volumeMounts &&
           containerConfig.volumeMounts.length > 0 && {
-            volumeMounts: containerConfig.volumeMounts.map((mount) => ({
-              name: mount.name,
-              mountPath: mount.mountPath,
-              subPath: mount.subPath,
-              readOnly: mount.readOnly === true,
-            })),
-          }),
+          volumeMounts: containerConfig.volumeMounts.map((mount) => ({
+            name: mount.name,
+            mountPath: mount.mountPath,
+            subPath: mount.subPath,
+            readOnly: mount.readOnly === true,
+          })),
+        }),
       }
       return container
     })
@@ -474,8 +474,7 @@ export function DeploymentCreateDialog({
       } catch (yamlError) {
         console.error('Failed to parse YAML:', yamlError)
         toast.error(
-          `Invalid YAML format: ${
-            yamlError instanceof Error ? yamlError.message : 'Unknown error'
+          `Invalid YAML format: ${yamlError instanceof Error ? yamlError.message : 'Unknown error'
           }`
         )
         return
@@ -1174,24 +1173,21 @@ export function DeploymentCreateDialog({
               (stepNum) => (
                 <div
                   key={stepNum}
-                  className={`flex items-center ${
-                    stepNum < totalSteps ? 'flex-1' : ''
-                  }`}
+                  className={`flex items-center ${stepNum < totalSteps ? 'flex-1' : ''
+                    }`}
                 >
                   <div
-                    className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium ${
-                      stepNum <= step
+                    className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium ${stepNum <= step
                         ? 'bg-primary text-primary-foreground'
                         : 'bg-muted text-muted-foreground'
-                    }`}
+                      }`}
                   >
                     {stepNum}
                   </div>
                   {stepNum < totalSteps && (
                     <div
-                      className={`flex-1 h-0.5 mx-2 ${
-                        stepNum < step ? 'bg-primary' : 'bg-muted'
-                      }`}
+                      className={`flex-1 h-0.5 mx-2 ${stepNum < step ? 'bg-primary' : 'bg-muted'
+                        }`}
                     />
                   )}
                 </div>

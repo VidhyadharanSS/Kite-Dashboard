@@ -46,14 +46,14 @@ var handlers = map[string]resourceHandler{}
 
 func RegisterRoutes(group *gin.RouterGroup) {
 	handlers = map[string]resourceHandler{
-		"pods":                     NewPodHandler(),
-		"namespaces":               NewGenericResourceHandler[*corev1.Namespace, *corev1.NamespaceList]("namespaces", true, false),
-		"nodes":                    NewNodeHandler(),
-		"services":                 NewGenericResourceHandler[*corev1.Service, *corev1.ServiceList]("services", false, true),
-		"endpoints":                NewGenericResourceHandler[*corev1.Endpoints, *corev1.EndpointsList]("endpoints", false, false),
-		"endpointslices":           NewGenericResourceHandler[*discoveryv1.EndpointSlice, *discoveryv1.EndpointSliceList]("endpointslices", false, false),
-		"configmaps":               NewGenericResourceHandler[*corev1.ConfigMap, *corev1.ConfigMapList]("configmaps", false, true),
-// 		"secrets":                  NewGenericResourceHandler[*corev1.Secret, *corev1.SecretList](false, true),
+		"pods":           NewPodHandler(),
+		"namespaces":     NewGenericResourceHandler[*corev1.Namespace, *corev1.NamespaceList]("namespaces", true, false),
+		"nodes":          NewNodeHandler(),
+		"services":       NewGenericResourceHandler[*corev1.Service, *corev1.ServiceList]("services", false, true),
+		"endpoints":      NewGenericResourceHandler[*corev1.Endpoints, *corev1.EndpointsList]("endpoints", false, false),
+		"endpointslices": NewGenericResourceHandler[*discoveryv1.EndpointSlice, *discoveryv1.EndpointSliceList]("endpointslices", false, false),
+		"configmaps":     NewGenericResourceHandler[*corev1.ConfigMap, *corev1.ConfigMapList]("configmaps", false, true),
+		// 		"secrets":                  NewGenericResourceHandler[*corev1.Secret, *corev1.SecretList](false, true),
 		"persistentvolumes":        NewGenericResourceHandler[*corev1.PersistentVolume, *corev1.PersistentVolumeList]("persistentvolumes", true, true),
 		"persistentvolumeclaims":   NewGenericResourceHandler[*corev1.PersistentVolumeClaim, *corev1.PersistentVolumeClaimList]("persistentvolumeclaims", false, true),
 		"serviceaccounts":          NewGenericResourceHandler[*corev1.ServiceAccount, *corev1.ServiceAccountList]("serviceaccounts", false, false),

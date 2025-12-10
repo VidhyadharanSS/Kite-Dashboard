@@ -10,7 +10,7 @@ import (
 	"github.com/zxh326/kite/pkg/common"
 	"github.com/zxh326/kite/pkg/model"
 	"github.com/zxh326/kite/pkg/rbac"
-	"github.com/zxh326/kite/pkg/utils" // Ensure this import matches your module path
+	"github.com/zxh326/kite/pkg/utils"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime/serializer/yaml"
@@ -52,11 +52,15 @@ func (h *ResourceApplyHandler) ApplyResource(c *gin.Context) {
 		return
 	}
 
-	// === MUTATION LOGIC START ===
-	// This acts like a Mutating Admission Controller
-	// It injects security context, resources, and probes defaults
+	// === 1. MUTATION: Enforce Defaults ===
 	utils.EnforceSecurityPolicies(obj)
-	// === MUTATION LOGIC END ===
+
+	// === 2. VALIDATION: Check for explicit violations ===
+	// This will block things like allowPrivilegeEscalation: true or bad hostPaths
+	if err := utils.ValidateResourceSecurity(obj); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
 
 	resource := strings.ToLower(obj.GetKind()) + "s"
 	if !rbac.CanAccess(user, resource, "create", cs.Name, obj.GetNamespace()) {

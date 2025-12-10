@@ -1,10 +1,14 @@
 import { useEffect, useState } from 'react'
 import { DialogDescription } from '@radix-ui/react-dialog'
 import { Container } from 'kubernetes-types/core/v1'
-import { useParams } from 'react-router-dom'
 
-import { EnvironmentEditor, ImageEditor, ResourceEditor } from './editors'
+// Corrected Import: './editors' assumes 'editors' is a folder inside 'src/components/'
+import { ResourceEditor } from './editors'
+
+// Corrected Imports: './ui/...' assumes 'ui' is a folder inside 'src/components/'
 import { Button } from './ui/button'
+import { Input } from './ui/input'
+import { Label } from './ui/label'
 import {
   Dialog,
   DialogContent,
@@ -29,8 +33,6 @@ export function ContainerEditDialog({
 }: ContainerEditDialogProps) {
   const [editedContainer, setEditedContainer] = useState<Container>(container)
 
-  const { namespace } = useParams()
-
   useEffect(() => {
     setEditedContainer({ ...container })
   }, [container])
@@ -44,39 +46,83 @@ export function ContainerEditDialog({
     setEditedContainer((prev) => ({ ...prev, ...updates }))
   }
 
+  // Helper to handle command/args array editing via string input
+  const handleStringArrayUpdate = (
+    field: 'command' | 'args',
+    value: string
+  ) => {
+    // Basic splitting by space for simple editing, or keeping as is if empty
+    // Ideally this parses shell commands, but for simple UI we split by space
+    const arrayValue = value ? value.match(/(?:[^\s"]+|"[^"]*")+/g) || [] : []
+    // Remove quotes if present from regex matching
+    const cleanArray = arrayValue.map((s) => s.replace(/^"|"$/g, ''))
+
+    handleUpdate({ [field]: cleanArray })
+  }
+
+  const getArrayAsString = (arr?: string[]) => {
+    if (!arr) return ''
+    // Join with spaces, wrapping in quotes if contains space
+    return arr.map(s => s.includes(' ') ? `"${s}"` : s).join(' ')
+  }
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="!max-w-4xl max-h-[90vh] overflow-y-auto sm:!max-w-4xl">
         <DialogHeader>
           <DialogTitle>Edit Container: {container.name}</DialogTitle>
           <DialogDescription className="text-sm text-muted-foreground">
-            More complex changes can be made by modifying in YAML.
+            Restricted Mode: Only Command, Args, and Resources are editable.
           </DialogDescription>
         </DialogHeader>
 
-        <Tabs defaultValue="image" className="w-full">
-          <TabsList className="grid w-full grid-cols-3">
-            <TabsTrigger value="image">Image</TabsTrigger>
+        <Tabs defaultValue="general" className="w-full">
+          <TabsList className="grid w-full grid-cols-2">
+            <TabsTrigger value="general">General</TabsTrigger>
             <TabsTrigger value="resources">Resources</TabsTrigger>
-            <TabsTrigger value="environment">Environment</TabsTrigger>
           </TabsList>
 
-          <TabsContent value="image" className="space-y-4">
-            <ImageEditor container={editedContainer} onUpdate={handleUpdate} />
+          <TabsContent value="general" className="space-y-6 py-4">
+            <div className="space-y-4 border p-4 rounded-lg">
+              <div className="grid w-full items-center gap-1.5">
+                <Label htmlFor="image-name">Image (Read Only)</Label>
+                <Input
+                  id="image-name"
+                  value={editedContainer.image || ''}
+                  disabled
+                  className="bg-muted"
+                />
+              </div>
+
+              <div className="grid w-full items-center gap-1.5">
+                <Label htmlFor="command">Command</Label>
+                <Input
+                  id="command"
+                  placeholder='e.g. /bin/sh -c'
+                  value={getArrayAsString(editedContainer.command)}
+                  onChange={(e) => handleStringArrayUpdate('command', e.target.value)}
+                />
+                <p className="text-xs text-muted-foreground">
+                  Space-separated arguments. Strings with spaces must be quoted.
+                </p>
+              </div>
+
+              <div className="grid w-full items-center gap-1.5">
+                <Label htmlFor="args">Args</Label>
+                <Input
+                  id="args"
+                  placeholder='e.g. echo "hello world"'
+                  value={getArrayAsString(editedContainer.args)}
+                  onChange={(e) => handleStringArrayUpdate('args', e.target.value)}
+                />
+              </div>
+            </div>
           </TabsContent>
 
           <TabsContent value="resources" className="space-y-6">
             <ResourceEditor
               container={editedContainer}
               onUpdate={handleUpdate}
-            />
-          </TabsContent>
-
-          <TabsContent value="environment" className="space-y-4">
-            <EnvironmentEditor
-              container={editedContainer}
-              onUpdate={handleUpdate}
-              namespace={namespace!}
             />
           </TabsContent>
         </Tabs>

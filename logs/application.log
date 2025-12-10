@@ -16,3 +16,24 @@
 [ACTIVITY] 2025-12-04 21:42:22 | [INFO] Cluster:kubernetes-admin@kubernetes | User:ssvd | Opened terminal for pod 'kite-795877d74b-5k5mk' in namespace 'kite' | Status:200
 [INFO] 2025-12-04 21:46:34 | Shutting down server gracefully...
 [INFO] 2025-12-04 21:46:34 | Server shutdown complete
+[INFO] 2025-12-10 18:11:02 | Logger initialized successfully
+[INFO] 2025-12-10 18:11:03 | Server started on port 8080
+[ACTIVITY] 2025-12-10 18:11:11 | [INFO] Cluster:kubernetes-admin@kubernetes | User:ssvd | Viewed cluster overview | Status:200
+[ACTIVITY] 2025-12-10 18:14:27 | [INFO] Cluster:kubernetes-admin@kubernetes | User:ssvd | Viewed cluster overview | Status:200
+[ACTIVITY] 2025-12-10 18:14:52 | [INFO] Cluster:kubernetes-admin@kubernetes | User:ssvd | Viewed cluster overview | Status:200
+[ACTIVITY] 2025-12-10 18:15:53 | [INFO] Cluster:kubernetes-admin@kubernetes | User:ssvd | Applied raw resource configuration | Status:200
+[ACTIVITY] 2025-12-10 18:17:05 | [INFO] Cluster:kubernetes-admin@kubernetes | User:ssvd | Updated deployments 'kite' in namespace 'cluster-scope' | Status:200
+[ACTIVITY] 2025-12-10 18:17:18 | [INFO] Cluster:kubernetes-admin@kubernetes | User:ssvd | Updated deployments 'kite' in namespace 'cluster-scope' | Status:200
+[ACTIVITY] 2025-12-10 18:17:32 | [INFO] Cluster:kubernetes-admin@kubernetes | User:ssvd | Updated deployments 'kite' in namespace 'cluster-scope' | Status:200
+[INFO] 2025-12-10 18:25:32 | Shutting down server gracefully...
+[INFO] 2025-12-10 18:25:32 | Server shutdown complete
+[INFO] 2025-12-10 18:25:38 | Logger initialized successfully
+[INFO] 2025-12-10 18:25:38 | Server started on port 8080
+[ACTIVITY] 2025-12-10 18:26:01 | [WARN] Cluster:kubernetes-admin@kubernetes | User:ssvd | Updated deployments 'kite' in namespace 'cluster-scope' | Status:400
+[ACTIVITY] 2025-12-10 18:28:10 | [WARN] Cluster:kubernetes-admin@kubernetes | User:ssvd | Updated deployments 'kite' in namespace 'cluster-scope' | Status:400
+[ACTIVITY] 2025-12-10 18:28:28 | [INFO] Cluster:kubernetes-admin@kubernetes | User:ssvd | Deleted deployments 'kite' from namespace 'cluster-scope' | Status:200
+[ACTIVITY] 2025-12-10 18:28:41 | [INFO] Cluster:kubernetes-admin@kubernetes | User:ssvd | Viewed cluster overview | Status:200
+[ACTIVITY] 2025-12-10 18:37:28 | [INFO] Cluster:kubernetes-admin@kubernetes | User:ssvd | Viewed cluster overview | Status:200
+[ACTIVITY] 2025-12-10 18:37:30 | [INFO] Cluster:kubernetes-admin@kubernetes | User:ssvd | Viewed cluster overview | Status:200
+[ACTIVITY] 2025-12-10 18:41:11 | [INFO] Cluster:kubernetes-admin@kubernetes | User:ssvd | Viewed cluster overview | Status:200
+[ACTIVITY] 2025-12-10 18:50:41 | [WARN] Cluster:kubernetes-admin@kubernetes | User:ssvd | Updated deployments 'crmintelligencepy-default' in namespace 'cluster-scope' | Status:400

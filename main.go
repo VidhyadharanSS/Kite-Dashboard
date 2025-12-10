@@ -38,28 +38,24 @@ import (
 //go:embed static
 var static embed.FS
 
-// SecurityMiddleware restricts sensitive routes and YAML content
 func SecurityMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		path := c.Request.URL.Path
 		method := c.Request.Method
 		contentType := c.GetHeader("Content-Type")
 
-		// Restrict YAML requests (force JSON)
 		if strings.Contains(contentType, "yaml") || strings.Contains(contentType, "yml") {
 			c.JSON(http.StatusUnsupportedMediaType, gin.H{"error": "YAML support has been removed. Please use JSON templates."})
 			c.Abort()
 			return
 		}
 
-		// Protect Secrets
 		if strings.Contains(path, "/secrets") {
 			c.JSON(http.StatusForbidden, gin.H{"error": "Access to Secrets is restricted in this environment."})
 			c.Abort()
 			return
 		}
 
-		// Protect Node Cordon/Taint
 		if strings.Contains(path, "/nodes/") && (method == http.MethodPatch || method == http.MethodPut) {
 			c.JSON(http.StatusForbidden, gin.H{"error": "Sensitive node operations (Cordon/Taint) are restricted via Dashboard."})
 			c.Abort()
@@ -70,7 +66,6 @@ func SecurityMiddleware() gin.HandlerFunc {
 	}
 }
 
-// WebsocketAwareGzipMiddleware checks headers to skip gzip for websockets completely
 func WebsocketAwareGzipMiddleware() gin.HandlerFunc {
 	gzipHandler := gzip.Gzip(gzip.DefaultCompression, gzip.WithExcludedPaths([]string{
 		"/metrics",
@@ -80,7 +75,7 @@ func WebsocketAwareGzipMiddleware() gin.HandlerFunc {
 	}))
 
 	return func(c *gin.Context) {
-		// If it is a WebSocket connection request, skip GZIP entirely
+
 		if c.IsWebsocket() ||
 			strings.ToLower(c.GetHeader("Upgrade")) == "websocket" ||
 			strings.Contains(strings.ToLower(c.GetHeader("Connection")), "upgrade") {
@@ -88,7 +83,6 @@ func WebsocketAwareGzipMiddleware() gin.HandlerFunc {
 			return
 		}
 
-		// Otherwise, use the GZIP handler
 		gzipHandler(c)
 	}
 }
@@ -141,7 +135,7 @@ func setupAPIRouter(r *gin.RouterGroup, cm *cluster.ClusterManager) {
 	})
 	r.GET("/api/v1/init_check", handlers.InitCheck)
 	r.GET("/api/v1/version", version.GetVersion)
-	// Auth routes (no auth required)
+
 	authHandler := auth.NewAuthHandler()
 	authGroup := r.Group("/api/auth")
 	{
@@ -159,14 +153,11 @@ func setupAPIRouter(r *gin.RouterGroup, cm *cluster.ClusterManager) {
 		userGroup.POST("/sidebar_preference", authHandler.RequireAuth(), handlers.UpdateSidebarPreference)
 	}
 
-	// admin apis
 	adminAPI := r.Group("/api/v1/admin")
-	// Initialize the setup API without authentication.
-	// Once users are configured, this API cannot be used.
+
 	adminAPI.POST("/users/create_super_user", handlers.CreateSuperUser)
 	adminAPI.POST("/clusters/import", cm.ImportClustersFromKubeconfig)
 
-	// Add SecurityMiddleware and AuditLogger here
 	adminAPI.Use(authHandler.RequireAuth(), middleware.AuditLogger(), SecurityMiddleware(), authHandler.RequireAdmin())
 	{
 		oauthProviderAPI := adminAPI.Group("/oauth-providers")
@@ -216,11 +207,9 @@ func setupAPIRouter(r *gin.RouterGroup, cm *cluster.ClusterManager) {
 		}
 	}
 
-	// API routes group (protected)
 	api := r.Group("/api/v1")
 	api.GET("/clusters", authHandler.RequireAuth(), cm.GetClusters)
 
-	// Add SecurityMiddleware and AuditLogger here
 	api.Use(authHandler.RequireAuth(), middleware.AuditLogger(), SecurityMiddleware(), middleware.ClusterMiddleware(cm))
 	{
 		api.GET("/overview", handlers.GetOverview)
@@ -258,14 +247,11 @@ func main() {
 	klog.InitFlags(nil)
 	flag.Parse()
 
-	// ===== INITIALIZE LOGGER =====
-	// Initialize rotating logs in the "logs" directory
 	if err := logx.Init("logs"); err != nil {
 		log.Fatalf("Failed to initialize logger: %v", err)
 	}
 	defer logx.Close()
 	logx.Info("Logger initialized successfully")
-	// =============================
 
 	go func() {
 		log.Println(http.ListenAndServe("localhost:6060", nil))
@@ -275,24 +261,17 @@ func main() {
 	gin.SetMode(gin.ReleaseMode)
 	r := gin.New()
 
-	// --- FIX: TRUSTED PROXIES ---
-	// Required for Ingress-Nginx to pass correct headers/WebSockets
 	r.SetTrustedProxies(nil)
-	// ----------------------------
 
 	r.Use(middleware.Metrics())
 
-	// FIX: Smart GZIP Middleware
-	// Explicitly checks for WebSocket headers to prevent gzip interference with logs/terminals
 	if !common.DisableGZIP {
 		klog.Info("GZIP compression is enabled (WebSockets excluded)")
 		r.Use(WebsocketAwareGzipMiddleware())
 	}
 
-	// Use RecoveryWithLog if available (optional) or standard Recovery
 	r.Use(gin.Recovery())
 
-	// REPLACE Default Logger with Rotating Access Logger
 	r.Use(middleware.AccessLogger())
 
 	r.Use(middleware.CORS())
@@ -306,7 +285,7 @@ func main() {
 	}
 
 	base := r.Group(common.Base)
-	// Setup router
+
 	setupAPIRouter(base, cm)
 	setupStatic(r)
 

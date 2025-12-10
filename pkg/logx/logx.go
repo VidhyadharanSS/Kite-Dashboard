@@ -23,7 +23,6 @@ type Logger struct {
 	logDir string
 }
 
-// Init initializes the logging system with rotation
 func Init(logDir string) error {
 	mu.Lock()
 	defer mu.Unlock()
@@ -32,8 +31,6 @@ func Init(logDir string) error {
 		return nil
 	}
 
-	// Create log directory if it doesn't exist
-	// 0777 allows read/write for everyone (fixing docker user issues)
 	if err := os.MkdirAll(logDir, 0777); err != nil {
 		return fmt.Errorf("failed to create log directory: %w", err)
 	}
@@ -41,16 +38,14 @@ func Init(logDir string) error {
 	accessPath := fmt.Sprintf("%s/access.log", logDir)
 	appPath := fmt.Sprintf("%s/application.log", logDir)
 
-	// Configure Access Log Rotation
 	accessLogger = &lumberjack.Logger{
 		Filename:   accessPath,
-		MaxSize:    10,   // megabytes
-		MaxBackups: 5,    // number of files
-		MaxAge:     30,   // days
-		Compress:   true, // compress rolled files
+		MaxSize:    10,
+		MaxBackups: 5,
+		MaxAge:     30,
+		Compress:   true,
 	}
 
-	// Configure Application Log Rotation
 	appLogger = &lumberjack.Logger{
 		Filename:   appPath,
 		MaxSize:    10,
@@ -59,22 +54,17 @@ func Init(logDir string) error {
 		Compress:   true,
 	}
 
-	// --- FIX: Force permissions on files immediately ---
-	// Write empty bytes to ensure file creation
 	accessLogger.Write([]byte(""))
 	appLogger.Write([]byte(""))
 
-	// Set permissions so 'cat' works inside shell
 	os.Chmod(accessPath, 0666)
 	os.Chmod(appPath, 0666)
-	// --------------------------------------------------
 
 	L = &Logger{logDir: logDir}
 	initialized = true
 	return nil
 }
 
-// Close closes all log files
 func Close() error {
 	mu.Lock()
 	defer mu.Unlock()
@@ -102,7 +92,6 @@ func Close() error {
 	return nil
 }
 
-// writeToFile writes to the rotating logger
 func writeToFile(w io.Writer, message string) {
 	mu.Lock()
 	defer mu.Unlock()
@@ -112,12 +101,10 @@ func writeToFile(w io.Writer, message string) {
 	}
 }
 
-// Access writes HTTP access logs to access.log only
 func Access(message string) {
 	writeToFile(accessLogger, message)
 }
 
-// Debug writes debug messages to application.log and stdout
 func Debug(format string, args ...interface{}) {
 	message := fmt.Sprintf("[DEBUG] %s | %s\n",
 		time.Now().Format("2006-01-02 15:04:05"),
@@ -127,7 +114,6 @@ func Debug(format string, args ...interface{}) {
 	fmt.Print(message)
 }
 
-// Info writes info messages to application.log and stdout
 func Info(format string, args ...interface{}) {
 	message := fmt.Sprintf("[INFO] %s | %s\n",
 		time.Now().Format("2006-01-02 15:04:05"),
@@ -137,7 +123,6 @@ func Info(format string, args ...interface{}) {
 	fmt.Print(message)
 }
 
-// Warn writes warning messages to application.log and stdout
 func Warn(format string, args ...interface{}) {
 	message := fmt.Sprintf("[WARN] %s | %s\n",
 		time.Now().Format("2006-01-02 15:04:05"),
@@ -147,7 +132,6 @@ func Warn(format string, args ...interface{}) {
 	fmt.Print(message)
 }
 
-// Error writes error messages to application.log and stdout
 func Error(format string, args ...interface{}) {
 	message := fmt.Sprintf("[ERROR] %s | %s\n",
 		time.Now().Format("2006-01-02 15:04:05"),
@@ -157,7 +141,6 @@ func Error(format string, args ...interface{}) {
 	fmt.Print(message)
 }
 
-// PanicToAppLog logs panic information to application.log and stdout
 func PanicToAppLog(err interface{}) {
 	stack := string(debug.Stack())
 	message := fmt.Sprintf("[PANIC] %s | Error: %v\nStack Trace:\n%s\n",
@@ -169,7 +152,6 @@ func PanicToAppLog(err interface{}) {
 	fmt.Print(message)
 }
 
-// Activity logs user activity events to application.log and stdout
 func Activity(format string, args ...interface{}) {
 	message := fmt.Sprintf("[ACTIVITY] %s | %s\n",
 		time.Now().Format("2006-01-02 15:04:05"),
