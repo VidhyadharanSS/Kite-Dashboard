@@ -37,3 +37,13 @@
 [ACTIVITY] 2025-12-10 18:37:30 | [INFO] Cluster:kubernetes-admin@kubernetes | User:ssvd | Viewed cluster overview | Status:200
 [ACTIVITY] 2025-12-10 18:41:11 | [INFO] Cluster:kubernetes-admin@kubernetes | User:ssvd | Viewed cluster overview | Status:200
 [ACTIVITY] 2025-12-10 18:50:41 | [WARN] Cluster:kubernetes-admin@kubernetes | User:ssvd | Updated deployments 'crmintelligencepy-default' in namespace 'cluster-scope' | Status:400
+[INFO] 2025-12-10 21:05:01 | Shutting down server gracefully...
+[INFO] 2025-12-10 21:05:01 | Server shutdown complete
+[INFO] 2025-12-10 21:05:09 | Logger initialized successfully
+[INFO] 2025-12-10 21:05:10 | Server started on port 8080
+[INFO] 2025-12-10 21:06:08 | Shutting down server gracefully...
+[INFO] 2025-12-10 21:06:08 | Server shutdown complete
+[INFO] 2025-12-10 21:06:12 | Logger initialized successfully
+[INFO] 2025-12-10 21:06:12 | Server started on port 8080
+[INFO] 2025-12-10 21:06:22 | Shutting down server gracefully...
+[INFO] 2025-12-10 21:06:22 | Server shutdown complete

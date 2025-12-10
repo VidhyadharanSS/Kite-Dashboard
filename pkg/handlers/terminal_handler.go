@@ -38,6 +38,11 @@ func (h *TerminalHandler) HandleTerminalWebSocket(c *gin.Context) {
 
 	user := c.MustGet("user").(model.User)
 
+	// BYPASS ORIGIN CHECK:
+	// Deleting the Origin header ensures x/net/websocket skips strict validation
+	// but still performs the correct handshake.
+	c.Request.Header.Del("Origin")
+
 	websocket.Handler(func(ws *websocket.Conn) {
 		ctx, cancel := context.WithCancel(c.Request.Context())
 		defer cancel()

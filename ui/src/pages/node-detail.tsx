@@ -1,13 +1,10 @@
 import { useEffect, useState } from 'react'
 import {
-  IconBan,
   IconCircleCheckFilled,
-  IconDroplet,
   IconExclamationCircle,
   IconLoader,
   IconLock,
   IconRefresh,
-  IconReload,
 } from '@tabler/icons-react'
 import * as yaml from 'js-yaml'
 import { Node } from 'kubernetes-types/core/v1'
@@ -15,10 +12,7 @@ import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
 
 import {
-  cordonNode,
-  drainNode,
   taintNode,
-  uncordonNode,
   untaintNode,
   updateResource,
   useResource,
@@ -66,17 +60,7 @@ export function NodeDetail(props: { name: string }) {
   const { t } = useTranslation()
 
   // Node operation states
-  const [isDrainPopoverOpen, setIsDrainPopoverOpen] = useState(false)
-  const [isCordonPopoverOpen, setIsCordonPopoverOpen] = useState(false)
   const [isTaintPopoverOpen, setIsTaintPopoverOpen] = useState(false)
-
-  // Drain operation options
-  const [drainOptions, setDrainOptions] = useState({
-    force: false,
-    gracePeriod: 30,
-    deleteLocalData: false,
-    ignoreDaemonsets: true,
-  })
 
   // Taint operation data
   const [taintData, setTaintData] = useState({
@@ -120,43 +104,6 @@ export function NodeDetail(props: { name: string }) {
       toast.error(translateError(error, t))
     } finally {
       setIsSavingYaml(false)
-    }
-  }
-
-  // Node operation handlers
-  const handleDrain = async () => {
-    try {
-      await drainNode(name, drainOptions)
-      toast.success(`Node ${name} drained successfully`)
-      setIsDrainPopoverOpen(false)
-      handleRefresh()
-    } catch (error) {
-      console.error('Failed to drain node:', error)
-      toast.error(translateError(error, t))
-    }
-  }
-
-  const handleCordon = async () => {
-    try {
-      await cordonNode(name)
-      toast.success(`Node ${name} cordoned successfully`)
-      setIsCordonPopoverOpen(false)
-      handleRefresh()
-    } catch (error) {
-      console.error('Failed to cordon node:', error)
-      toast.error(translateError(error, t))
-    }
-  }
-
-  const handleUncordon = async () => {
-    try {
-      await uncordonNode(name)
-      toast.success(`Node ${name} uncordoned successfully`)
-      setIsCordonPopoverOpen(false)
-      handleRefresh()
-    } catch (error) {
-      console.error('Failed to uncordon node:', error)
-      toast.error(translateError(error, t))
     }
   }
 
@@ -245,153 +192,6 @@ export function NodeDetail(props: { name: string }) {
             Refresh
           </Button>
           <DescribeDialog resourceType="nodes" name={name} />
-          {/* Drain Node Popover */}
-          <Popover
-            open={isDrainPopoverOpen}
-            onOpenChange={setIsDrainPopoverOpen}
-          >
-            <PopoverTrigger asChild>
-              <Button variant="outline" size="sm">
-                <IconDroplet className="w-4 h-4" />
-                Drain
-              </Button>
-            </PopoverTrigger>
-            <PopoverContent className="w-80">
-              <div className="space-y-4">
-                <div>
-                  <h4 className="font-medium">Drain Node</h4>
-                  <p className="text-sm text-muted-foreground">
-                    Safely evict all pods from this node.
-                  </p>
-                </div>
-                <div className="space-y-3">
-                  <div className="flex items-center space-x-2">
-                    <input
-                      type="checkbox"
-                      id="force"
-                      checked={drainOptions.force}
-                      onChange={(e) =>
-                        setDrainOptions({
-                          ...drainOptions,
-                          force: e.target.checked,
-                        })
-                      }
-                    />
-                    <Label htmlFor="force" className="text-sm">
-                      Force drain
-                    </Label>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <input
-                      type="checkbox"
-                      id="deleteLocalData"
-                      checked={drainOptions.deleteLocalData}
-                      onChange={(e) =>
-                        setDrainOptions({
-                          ...drainOptions,
-                          deleteLocalData: e.target.checked,
-                        })
-                      }
-                    />
-                    <Label htmlFor="deleteLocalData" className="text-sm">
-                      Delete local data
-                    </Label>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <input
-                      type="checkbox"
-                      id="ignoreDaemonsets"
-                      checked={drainOptions.ignoreDaemonsets}
-                      onChange={(e) =>
-                        setDrainOptions({
-                          ...drainOptions,
-                          ignoreDaemonsets: e.target.checked,
-                        })
-                      }
-                    />
-                    <Label htmlFor="ignoreDaemonsets" className="text-sm">
-                      Ignore DaemonSets
-                    </Label>
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="gracePeriod" className="text-sm">
-                      Grace Period (seconds)
-                    </Label>
-                    <Input
-                      id="gracePeriod"
-                      type="number"
-                      value={drainOptions.gracePeriod}
-                      onChange={(e) =>
-                        setDrainOptions({
-                          ...drainOptions,
-                          gracePeriod: parseInt(e.target.value) || 30,
-                        })
-                      }
-                      min={0}
-                    />
-                  </div>
-                </div>
-                <div className="flex gap-2">
-                  <Button onClick={handleDrain} size="sm" variant="destructive">
-                    Drain Node
-                  </Button>
-                  <Button
-                    onClick={() => setIsDrainPopoverOpen(false)}
-                    size="sm"
-                    variant="outline"
-                  >
-                    Cancel
-                  </Button>
-                </div>
-              </div>
-            </PopoverContent>
-          </Popover>
-
-          {/* Cordon/Uncordon Toggle */}
-          {data.spec?.unschedulable ? (
-            <Button onClick={handleUncordon} variant="outline" size="sm">
-              <IconReload className="w-4 h-4" />
-              Uncordon
-            </Button>
-          ) : (
-            <Popover
-              open={isCordonPopoverOpen}
-              onOpenChange={setIsCordonPopoverOpen}
-            >
-              <PopoverTrigger asChild>
-                <Button variant="outline" size="sm">
-                  <IconBan className="w-4 h-4" />
-                  Cordon
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-64">
-                <div className="space-y-4">
-                  <div>
-                    <h4 className="font-medium">Cordon Node</h4>
-                    <p className="text-sm text-muted-foreground">
-                      Mark this node as unschedulable.
-                    </p>
-                  </div>
-                  <div className="flex gap-2">
-                    <Button
-                      onClick={handleCordon}
-                      size="sm"
-                      variant="destructive"
-                    >
-                      Cordon Node
-                    </Button>
-                    <Button
-                      onClick={() => setIsCordonPopoverOpen(false)}
-                      size="sm"
-                      variant="outline"
-                    >
-                      Cancel
-                    </Button>
-                  </div>
-                </div>
-              </PopoverContent>
-            </Popover>
-          )}
 
           {/* Taint Node Popover */}
           <Popover
@@ -735,8 +535,8 @@ export function NodeDetail(props: { name: string }) {
                                 Capacity:{' '}
                                 {data.status?.capacity?.['ephemeral-storage']
                                   ? formatMemory(
-                                      data.status.capacity['ephemeral-storage']
-                                    )
+                                    data.status.capacity['ephemeral-storage']
+                                  )
                                   : 'N/A'}
                               </p>
                             </div>
@@ -744,10 +544,10 @@ export function NodeDetail(props: { name: string }) {
                               <p className="text-sm font-medium">
                                 {data.status?.allocatable?.['ephemeral-storage']
                                   ? formatMemory(
-                                      data.status.allocatable[
-                                        'ephemeral-storage'
-                                      ]
-                                    )
+                                    data.status.allocatable[
+                                    'ephemeral-storage'
+                                    ]
+                                  )
                                   : 'N/A'}
                               </p>
                               <p className="text-xs text-muted-foreground">
@@ -820,13 +620,12 @@ export function NodeDetail(props: { name: string }) {
                             >
                               <div className="flex items-center gap-2">
                                 <div
-                                  className={`w-2 h-2 rounded-full ${
-                                    condition.health === 'True'
+                                  className={`w-2 h-2 rounded-full ${condition.health === 'True'
                                       ? 'bg-green-500'
                                       : condition.health === 'False'
                                         ? 'bg-red-500'
                                         : 'bg-yellow-500'
-                                  }`}
+                                    }`}
                                 />
                                 <Badge
                                   variant={
@@ -876,25 +675,25 @@ export function NodeDetail(props: { name: string }) {
           },
           ...(relatedPods && relatedPods.length > 0
             ? [
-                {
-                  value: 'pods',
-                  label: (
-                    <>
-                      Pods{' '}
-                      {relatedPods && (
-                        <Badge variant="secondary">{relatedPods.length}</Badge>
-                      )}
-                    </>
-                  ),
-                  content: (
-                    <PodTable
-                      pods={relatedPods}
-                      isLoading={isLoadingRelated}
-                      hiddenNode
-                    />
-                  ),
-                },
-              ]
+              {
+                value: 'pods',
+                label: (
+                  <>
+                    Pods{' '}
+                    {relatedPods && (
+                      <Badge variant="secondary">{relatedPods.length}</Badge>
+                    )}
+                  </>
+                ),
+                content: (
+                  <PodTable
+                    pods={relatedPods}
+                    isLoading={isLoadingRelated}
+                    hiddenNode
+                  />
+                ),
+              },
+            ]
             : []),
           {
             value: 'monitor',

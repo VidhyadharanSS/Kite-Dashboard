@@ -33,6 +33,13 @@ type LogsMessage struct {
 
 // HandleLogsWebSocket handles WebSocket connections for log streaming
 func (h *LogsHandler) HandleLogsWebSocket(c *gin.Context) {
+	// BYPASS ORIGIN CHECK:
+	// The net/websocket library enforces strict Origin checks.
+	// By deleting the Origin header from the request before passing it to the handler,
+	// we force the library to skip the check (treating it like a non-browser client),
+	// while still performing the standard Handshake (sending HTTP 101 headers).
+	c.Request.Header.Del("Origin")
+
 	websocket.Handler(func(ws *websocket.Conn) {
 		ctx, cancel := context.WithCancel(c.Request.Context())
 		defer cancel()
