@@ -47,3 +47,7 @@
 [INFO] 2025-12-10 21:06:12 | Server started on port 8080
 [INFO] 2025-12-10 21:06:22 | Shutting down server gracefully...
 [INFO] 2025-12-10 21:06:22 | Server shutdown complete
+[INFO] 2025-12-12 18:07:07 | Logger initialized successfully
+[INFO] 2025-12-12 18:07:08 | Server started on port 8080
+[ACTIVITY] 2025-12-12 18:07:21 | [INFO] Cluster:kubernetes-admin@kubernetes | User:ssvd | Viewed cluster overview | Status:200
+[ACTIVITY] 2025-12-12 18:14:07 | [INFO] Cluster:kubernetes-admin@kubernetes | User:ssvd | Viewed cluster overview | Status:200
