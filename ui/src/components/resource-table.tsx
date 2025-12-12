@@ -292,6 +292,22 @@ export function ResourceTable<T>({
     onSortingChange: setSorting,
     onColumnFiltersChange: setColumnFilters,
     onRowSelectionChange: setRowSelection,
+    getRowId: (row) => {
+      const metadata = (
+        row as {
+          metadata?: { name?: string; namespace?: string; uid?: string }
+        }
+      )?.metadata
+      if (!metadata?.name) {
+        return `row-${Math.random()}`
+      }
+      return (
+        metadata.uid ||
+        (metadata.namespace
+          ? `${metadata.namespace}/${metadata.name}`
+          : metadata.name)
+      )
+    },
     state: {
       sorting,
       columnFilters,
@@ -659,11 +675,10 @@ export function ResourceTable<T>({
       {/* Table card */}
       <div className="overflow-hidden rounded-lg border">
         <div
-          className={`rounded-md transition-opacity duration-200 ${
-            isLoading && data && (data as T[]).length > 0
-              ? 'opacity-75'
-              : 'opacity-100'
-          }`}
+          className={`rounded-md transition-opacity duration-200 ${isLoading && data && (data as T[]).length > 0
+            ? 'opacity-75'
+            : 'opacity-100'
+            }`}
         >
           {renderEmptyState() || (
             <Table>
