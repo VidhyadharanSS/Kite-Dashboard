@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react'
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   ColumnDef,
   ColumnFiltersState,
@@ -20,14 +20,16 @@ import {
   RefreshCw,
   Search,
   Settings2,
+  Tag,
   Trash2,
   XCircle,
 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
-
+import { useSearchParams } from 'react-router-dom'
 import { ResourceType } from '@/types/api'
 import { deleteResource, useResources, useResourcesWatch } from '@/lib/api'
+import { usePermissions } from '@/hooks/use-permissions'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
@@ -62,6 +64,7 @@ import { ConnectionIndicator } from './connection-indicator'
 import { ErrorMessage } from './error-message'
 import { ResourceTableView } from './resource-table-view'
 import { NamespaceSelector } from './selector/namespace-selector'
+import { Combobox } from '@/components/ui/combobox'
 
 export interface ResourceTableProps<T> {
   resourceName: string
@@ -72,8 +75,12 @@ export interface ResourceTableProps<T> {
   searchQueryFilter?: (item: T, query: string) => boolean // Custom filter function
   showCreateButton?: boolean // If true, show create button
   onCreateClick?: () => void // Callback for create button click
+  onBatchRestart?: (rows: T[]) => Promise<void> // Callback for batch restart
   extraToolbars?: React.ReactNode[] // Additional toolbar components
   defaultHiddenColumns?: string[] // Columns to hide by default
+  enableLabelFilter?: boolean // If true, show label selector filter input
+  headerContent?: (data: T[]) => React.ReactNode // Extra content below title/toolbar but above table
+  namespace?: string // Forced namespace
 }
 
 export function ResourceTable<T>({
@@ -84,10 +91,16 @@ export function ResourceTable<T>({
   searchQueryFilter,
   showCreateButton = false,
   onCreateClick,
+  onBatchRestart,
   extraToolbars = [],
   defaultHiddenColumns = [],
+  enableLabelFilter = false,
+  headerContent,
   labelSelector,
+  namespace: forcedNamespace,
 }: ResourceTableProps<T> & { labelSelector?: string }) {
+  const [localLabelFilter, setLocalLabelFilter] = React.useState('')
+  const [appliedLabelFilter, setAppliedLabelFilter] = React.useState('')
   const { t } = useTranslation()
   const [sorting, setSorting] = useState<SortingState>([])
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>(() => {
@@ -97,6 +110,7 @@ export function ResourceTable<T>({
     return savedFilters ? JSON.parse(savedFilters) : []
   })
   const [rowSelection, setRowSelection] = useState<RowSelectionState>({})
+  const { canAccess } = usePermissions()
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
   const [searchQuery, setSearchQuery] = useState<string>(() => {
@@ -104,6 +118,32 @@ export function ResourceTable<T>({
     const storageKey = `${currentCluster}-${resourceName}-searchQuery`
     return sessionStorage.getItem(storageKey) || ''
   })
+  const [displaySearchQuery, setDisplaySearchQuery] = useState(searchQuery)
+  const searchInputRef = useRef<HTMLInputElement>(null)
+
+  // Global search focus shortcut
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === 'f') {
+        const target = e.target as HTMLElement
+        // Don't focus if already in an input
+        if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA') return
+
+        e.preventDefault()
+        searchInputRef.current?.focus()
+      }
+    }
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [])
+
+  // Debounce search query update
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setSearchQuery(displaySearchQuery)
+    }, 300)
+    return () => clearTimeout(timer)
+  }, [displaySearchQuery])
 
   const [columnVisibility, setColumnVisibility] = useState<
     Record<string, boolean>
@@ -144,6 +184,34 @@ export function ResourceTable<T>({
       ? undefined // No namespace for cluster scope
       : storedNamespace || 'default' // Default to 'default' if not set
   })
+
+  const [searchParams] = useSearchParams()
+
+  useEffect(() => {
+    const nsParam = searchParams.get('namespace')
+    if (nsParam && !clusterScope) {
+      setSelectedNamespace(nsParam)
+      localStorage.setItem(
+        localStorage.getItem('current-cluster') + 'selectedNamespace',
+        nsParam
+      )
+    }
+  }, [searchParams, clusterScope])
+
+  // Listen for namespace changes dispatched by the global NamespaceQuickSwitch pills in the header.
+  // When a pinned namespace pill is clicked it writes to localStorage and fires a StorageEvent
+  // so every mounted ResourceTable instantly filters to the chosen namespace.
+  useEffect(() => {
+    if (clusterScope) return
+    const clusterKey = (localStorage.getItem('current-cluster') ?? '') + 'selectedNamespace'
+    const onStorage = (e: StorageEvent) => {
+      if (e.key === clusterKey && e.newValue !== null) {
+        setSelectedNamespace(e.newValue)
+      }
+    }
+    window.addEventListener('storage', onStorage)
+    return () => window.removeEventListener('storage', onStorage)
+  }, [clusterScope])
   const [useSSE, setUseSSE] = useState(false)
   const {
     isLoading: queryLoading,
@@ -153,12 +221,12 @@ export function ResourceTable<T>({
     refetch: queryRefetch,
   } = useResources(
     resourceType ?? (resourceName.toLowerCase() as ResourceType),
-    selectedNamespace,
+    forcedNamespace || selectedNamespace,
     {
       refreshInterval: useSSE ? 0 : refreshInterval, // disable polling when SSE
       reduce: true, // Fetch reduced data for performance
       disable: useSSE, // do not query when using SSE
-      labelSelector: labelSelector,
+      labelSelector: labelSelector || appliedLabelFilter || undefined,
     }
   )
 
@@ -173,7 +241,7 @@ export function ResourceTable<T>({
   } = useResourcesWatch(
     (resourceType ??
       (resourceName.toLowerCase() as ResourceType)) as ResourceType,
-    selectedNamespace,
+    forcedNamespace || selectedNamespace,
     { reduce: true, enabled: useSSE, labelSelector: labelSelector }
   )
 
@@ -317,7 +385,85 @@ export function ResourceTable<T>({
     : (queryError as unknown as Error | null)
   const refetch = useSSE ? reconnectSSE : queryRefetch
 
-  const memoizedData = useMemo(() => (data || []) as T[], [data])
+  const memoizedData = useMemo(() => {
+    let result = (data || []) as T[]
+
+    // When query is empty, still apply external state-based filters
+    // (e.g. pill buttons that live outside the search box)
+    if (!searchQuery.trim()) {
+      return searchQueryFilter ? result.filter(item => searchQueryFilter(item, '')) : result
+    }
+
+    const lowerQuery = searchQuery.toLowerCase().trim()
+
+    // Headlamp-style query parsing
+    const parts = lowerQuery.split(/\s+/).filter(Boolean)
+    const filters: { type: string; value: string }[] = []
+
+    parts.forEach(part => {
+      if (part.includes(':')) {
+        const [prefix, ...rest] = part.split(':')
+        const value = rest.join(':')
+        if (value) {
+          filters.push({ type: prefix, value })
+        }
+      } else {
+        filters.push({ type: 'text', value: part })
+      }
+    })
+
+    if (filters.length > 0) {
+      result = result.filter(item => {
+        const metadata = (item as any)?.metadata || {}
+        const status = (item as any)?.status
+
+        return filters.every(f => {
+          switch (f.type) {
+            case 'n':
+            case 'name':
+              return metadata.name?.toLowerCase().includes(f.value)
+            case 'ns':
+            case 'namespace':
+              return metadata.namespace?.toLowerCase().includes(f.value)
+            case 'l':
+            case 'label':
+              const labels = metadata.labels || {}
+              if (f.value.includes('=')) {
+                const [lKey, lVal] = f.value.split('=')
+                return labels[lKey]?.toLowerCase() === lVal.toLowerCase()
+              }
+              return Object.entries(labels).some(([k, v]) =>
+                `${k}=${v}`.toLowerCase().includes(f.value)
+              )
+            case 's':
+            case 'status':
+              const sStr = typeof status === 'string'
+                ? status
+                : (status?.phase || status?.conditions?.[0]?.type || '')
+              return String(sStr).toLowerCase().includes(f.value)
+            case 't':
+            case 'type':
+              const type = (item as any)?.type || ''
+              return String(type).toLowerCase().includes(f.value)
+            default:
+              if (searchQueryFilter) {
+                return searchQueryFilter(item, f.value)
+              }
+              const itemStr = JSON.stringify(item).toLowerCase()
+              return itemStr.includes(f.value)
+          }
+        })
+      })
+    }
+
+    // When no search text but an external filter function exists (e.g. status pill buttons),
+    // still apply it so external state-based filtering works even without typed query.
+    if (filters.length === 0 && searchQueryFilter) {
+      result = result.filter(item => searchQueryFilter(item, ''))
+    }
+
+    return result
+  }, [data, searchQueryFilter, searchQuery])
 
   useEffect(() => {
     if (!useSSE && error) {
@@ -369,7 +515,7 @@ export function ResourceTable<T>({
     // Improve filtering performance and consistency
     globalFilterFn: (row, _columnId, value) => {
       if (searchQueryFilter) {
-        return searchQueryFilter(row.original as T, String(value).toLowerCase())
+        return true // Already filtered in memoizedData
       }
       const searchValue = String(value).toLowerCase()
 
@@ -518,13 +664,15 @@ export function ResourceTable<T>({
 
   return (
     <div className="flex flex-col gap-3">
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-        <div>
+      {/* Header: Title (left) + All Controls (right) */}
+      <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-3">
+        {/* Title column */}
+        <div className="shrink-0">
           <h1 className="text-2xl font-bold capitalize">{resourceName}</h1>
           {!clusterScope && selectedNamespace && (
             <div className="text-muted-foreground flex items-center mt-1">
               <span>Namespace:</span>
-              <Badge variant="outline" className="ml-2 ">
+              <Badge variant="outline" className="ml-2">
                 {selectedNamespace === '_all'
                   ? 'All Namespaces'
                   : selectedNamespace}
@@ -533,8 +681,10 @@ export function ResourceTable<T>({
           )}
         </div>
 
-        <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
-          <div className="flex items-center gap-2 flex-wrap">
+        {/* Controls column - two rows stacked */}
+        <div className="flex flex-col gap-2 items-end min-w-0">
+          {/* Row 1: Filters */}
+          <div className="flex items-center gap-2 flex-wrap justify-end">
             {extraToolbars?.map((toolbar, index) => (
               <React.Fragment key={index}>{toolbar}</React.Fragment>
             ))}
@@ -557,26 +707,24 @@ export function ResourceTable<T>({
                     if (checked) {
                       setRefreshInterval(0)
                     } else if (refreshInterval === 0) {
-                      setRefreshInterval(5000) // Default to 5s when disabling watch mode
+                      setRefreshInterval(5000)
                     }
                   }}
                 />
               </div>
             )}
-            {/* Refresh interval selector */}
+            {/* Refresh interval */}
             <Select
               value={refreshInterval.toString()}
               onValueChange={(value) => {
                 setRefreshInterval(Number(value))
-                if (Number(value) > 0) {
-                  setUseSSE(false)
-                }
+                if (Number(value) > 0) setUseSSE(false)
               }}
               disabled={useSSE}
             >
-              <SelectTrigger className="max-w-[140px]">
-                <div className="flex items-center gap-2">
-                  <RefreshCw className="h-4 w-4" />
+              <SelectTrigger className="h-9 w-[110px]">
+                <div className="flex items-center gap-1.5">
+                  <RefreshCw className="h-3.5 w-3.5 shrink-0" />
                   <SelectValue />
                 </div>
               </SelectTrigger>
@@ -595,7 +743,7 @@ export function ResourceTable<T>({
                 showAll={true}
               />
             )}
-            {/* Column Filters */}
+            {/* Column Filters as searchable comboboxes */}
             {table
               .getAllColumns()
               .filter((column) => {
@@ -609,122 +757,196 @@ export function ResourceTable<T>({
                   enableColumnFilter?: boolean
                 }
                 const uniqueValues = column.getFacetedUniqueValues()
-                const filterValue = column.getFilterValue() as string
-
+                const filterValue = (column.getFilterValue() as string) || ''
+                const headerLabel =
+                  typeof columnDef.header === 'string' ? columnDef.header : 'Column'
+                const colOptions = [
+                  { value: 'all', label: `All ${headerLabel}s` },
+                  ...Array.from(uniqueValues.keys())
+                    .filter(Boolean)
+                    .sort()
+                    .map((v) => ({
+                      value: String(v),
+                      label: `${String(v)} (${uniqueValues.get(v)})`,
+                    })),
+                ]
                 return (
-                  <Select
+                  <Combobox
                     key={column.id}
-                    value={filterValue || ''}
-                    onValueChange={(value) =>
-                      column.setFilterValue(value === 'all' ? '' : value)
+                    options={colOptions}
+                    value={filterValue || 'all'}
+                    onValueChange={(val: string) =>
+                      column.setFilterValue(val === 'all' ? '' : val)
                     }
-                  >
-                    <SelectTrigger className="min-w-32">
-                      <SelectValue
-                        placeholder={`Filter ${typeof columnDef.header === 'string' ? columnDef.header : 'Column'}`}
-                      />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">
-                        All{' '}
-                        {typeof columnDef.header === 'string'
-                          ? columnDef.header
-                          : 'Values'}
-                      </SelectItem>
-                      {Array.from(uniqueValues.keys())
-                        .sort()
-                        .map((value) =>
-                          value ? (
-                            <SelectItem
-                              key={String(value)}
-                              value={String(value)}
-                            >
-                              {String(value)} ({uniqueValues.get(value)})
-                            </SelectItem>
-                          ) : null
-                        )}
-                    </SelectContent>
-                  </Select>
+                    placeholder={`Filter ${headerLabel}`}
+                    searchPlaceholder={`Search ${headerLabel}...`}
+                    emptyText={`No ${headerLabel} found.`}
+                    triggerClassName="h-9 max-w-[180px]"
+                  />
                 )
               })}
+            {/* Label Filter */}
+            {enableLabelFilter && (
+              <div className="flex items-center gap-1">
+                <div className="relative">
+                  <Tag className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground pointer-events-none" />
+                  <Input
+                    placeholder="Labels: app=nginx"
+                    value={localLabelFilter}
+                    onChange={(e) => setLocalLabelFilter(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        setAppliedLabelFilter(localLabelFilter)
+                      } else if (e.key === 'Escape') {
+                        setLocalLabelFilter('')
+                        setAppliedLabelFilter('')
+                      }
+                    }}
+                    className="pl-8 h-9 w-[180px] text-xs"
+                  />
+                </div>
+                {appliedLabelFilter && (
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-9 w-9 shrink-0"
+                    onClick={() => {
+                      setLocalLabelFilter('')
+                      setAppliedLabelFilter('')
+                    }}
+                    title="Clear label filter"
+                  >
+                    <XCircle className="h-4 w-4" />
+                  </Button>
+                )}
+                {localLabelFilter !== appliedLabelFilter && localLabelFilter && (
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    className="h-9 px-3 text-xs shrink-0"
+                    onClick={() => setAppliedLabelFilter(localLabelFilter)}
+                  >
+                    Apply
+                  </Button>
+                )}
+              </div>
+            )}
           </div>
 
-          {/* Search bar */}
-          <div className="flex items-center gap-2 w-full sm:w-auto">
-            <div className="relative w-full sm:w-auto">
+          {/* Row 2: Search + Batch Actions + Create + Column Toggle */}
+          <div className="flex items-center gap-2">
+            {/* Search bar */}
+            <div className="relative">
               <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
               <Input
+                ref={searchInputRef}
                 placeholder={`Search ${resourceName.toLowerCase()}...`}
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-9 pr-4 w-full sm:w-[100px] md:w-[200px]"
+                value={displaySearchQuery}
+                onChange={(e) => setDisplaySearchQuery(e.target.value)}
+                className="pl-9 pr-4 w-[200px]"
               />
             </div>
-            {searchQuery && (
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={() => setSearchQuery('')}
-                className="h-9 w-9"
-              >
+            {displaySearchQuery && (
+              <Button variant="ghost" size="icon" onClick={() => setDisplaySearchQuery('')} className="h-9 w-9">
                 <XCircle className="h-4 w-4" />
               </Button>
             )}
-          </div>
-          {/* Batch delete button */}
-          {table.getSelectedRowModel().rows.length > 0 && (
-            <Button
-              variant="destructive"
-              onClick={() => setDeleteDialogOpen(true)}
-              className="gap-2"
-            >
-              <Trash2 className="h-4 w-4" />
-              {t('resourceTable.deleteSelected', {
-                count: table.getSelectedRowModel().rows.length,
-              })}
-            </Button>
-          )}
-          {showCreateButton && onCreateClick && (
-            <Button onClick={onCreateClick} className="gap-1">
-              <Plus className="h-2 w-2" />
-              New
-            </Button>
-          )}
-
-          {/* Toggle columns Dropdown */}
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="outline" size="icon" className="h-9 w-9">
-                <Settings2 className="h-4 w-4" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuLabel>Toggle columns</DropdownMenuLabel>
-              <DropdownMenuSeparator />
-              {table
-                .getAllLeafColumns()
-                .filter((column) => column.getCanHide())
-                .map((column) => {
-                  const header = column.columnDef.header
-                  const headerText =
-                    typeof header === 'string' ? header : column.id
-                  return (
-                    <DropdownMenuCheckboxItem
-                      key={column.id}
-                      className="capitalize"
-                      checked={column.getIsVisible()}
-                      onCheckedChange={(value) =>
-                        column.toggleVisibility(!!value)
-                      }
+            {table.getSelectedRowModel().rows.length > 0 && (
+              <div className="flex gap-2 animate-in fade-in slide-in-from-right-2">
+                <div className="bg-primary/5 border border-primary/20 rounded-md p-1 flex gap-1">
+                  {onBatchRestart && canAccess(resourceType || (resourceName.toLowerCase() as ResourceType), 'update', selectedNamespace || forcedNamespace) && (
+                    <Button
+                      variant="secondary"
+                      size="sm"
+                      onClick={async () => {
+                        const selectedRows = table.getSelectedRowModel().rows.map((row) => row.original)
+                        await onBatchRestart(selectedRows)
+                        table.toggleAllRowsSelected(false)
+                      }}
+                      className="h-7 text-xs gap-1.5"
                     >
-                      {headerText}
-                    </DropdownMenuCheckboxItem>
-                  )
-                })}
-            </DropdownMenuContent>
-          </DropdownMenu>
+                      <RefreshCw className="h-3.5 w-3.5" />
+                      Restart ({table.getSelectedRowModel().rows.length})
+                    </Button>
+                  )}
+                  {canAccess(resourceType || (resourceName.toLowerCase() as ResourceType), 'delete', selectedNamespace || forcedNamespace) && (
+                    <Button
+                      variant="destructive"
+                      size="sm"
+                      onClick={() => setDeleteDialogOpen(true)}
+                      className="h-7 text-xs gap-1.5"
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                      Delete ({table.getSelectedRowModel().rows.length})
+                    </Button>
+                  )}
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setRowSelection({})}
+                    className="h-7 text-xs"
+                  >
+                    Clear
+                  </Button>
+                </div>
+              </div>
+            )}
+            {searchQuery && filteredRowCount > 0 && Object.keys(rowSelection).length < filteredRowCount && (
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-9 gap-2 border-primary/30 text-primary hover:bg-primary/5"
+                onClick={() => {
+                  const newSelection: RowSelectionState = {}
+                  table.getFilteredRowModel().rows.forEach(row => {
+                    newSelection[row.id] = true
+                  })
+                  setRowSelection(newSelection)
+                }}
+              >
+                Select All Matching ({filteredRowCount})
+              </Button>
+            )}
+            {showCreateButton && onCreateClick && canAccess(resourceType || (resourceName.toLowerCase() as ResourceType), 'create', selectedNamespace || forcedNamespace) && (
+              <Button onClick={onCreateClick} className="gap-1">
+                <Plus className="h-2 w-2" />
+                New
+              </Button>
+            )}
+            {/* Toggle columns Dropdown */}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" size="icon" className="h-9 w-9">
+                  <Settings2 className="h-4 w-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuLabel>Toggle columns</DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                {table
+                  .getAllLeafColumns()
+                  .filter((column) => column.getCanHide())
+                  .map((column) => {
+                    const header = column.columnDef.header
+                    const headerText = typeof header === 'string' ? header : column.id
+                    return (
+                      <DropdownMenuCheckboxItem
+                        key={column.id}
+                        className="capitalize"
+                        checked={column.getIsVisible()}
+                        onCheckedChange={(value) => column.toggleVisibility(!!value)}
+                      >
+                        {headerText}
+                      </DropdownMenuCheckboxItem>
+                    )
+                  })}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
         </div>
       </div>
+
+      {headerContent && headerContent(table.getFilteredRowModel().rows.map((row) => row.original))}
 
       <ResourceTableView
         table={table}
@@ -770,6 +992,6 @@ export function ResourceTable<T>({
           </DialogFooter>
         </DialogContent>
       </Dialog>
-    </div>
+    </div >
   )
 }

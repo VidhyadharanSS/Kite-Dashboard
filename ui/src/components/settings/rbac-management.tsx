@@ -7,6 +7,7 @@ import {
   IconCopy,
   IconSearch,
   IconShield,
+  IconTable,
 } from '@tabler/icons-react'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { ColumnDef } from '@tanstack/react-table'
@@ -36,6 +37,9 @@ import { Action, ActionTable } from '../action-table'
 import { Badge } from '../ui/badge'
 import { RBACAssignmentDialog } from './rbac-assignment-dialog'
 import { RBACDialog } from './rbac-dialog'
+import { RBACPermissionMatrix } from './rbac-permission-matrix'
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from '../ui/sheet'
+
 
 export function RBACManagement() {
   const { t } = useTranslation()
@@ -48,6 +52,7 @@ export function RBACManagement() {
   const [deletingRole, setDeletingRole] = useState<Role | null>(null)
   const [showAssignDialog, setShowAssignDialog] = useState(false)
   const [assigningRole, setAssigningRole] = useState<Role | null>(null)
+  const [viewingMatrixRole, setViewingMatrixRole] = useState<Role | null>(null)
   const [searchQuery, setSearchQuery] = useState('')
 
   const filteredRoles = useMemo(() => {
@@ -158,6 +163,15 @@ export function RBACManagement() {
           setAssigningRole(r)
           setShowAssignDialog(true)
         },
+      },
+      {
+        label: (
+          <>
+            <IconTable className="h-4 w-4" />
+            {t('rbac.viewMatrix', 'View Permissions')}
+          </>
+        ),
+        onClick: (r) => setViewingMatrixRole(r),
       },
       {
         label: (
@@ -414,7 +428,23 @@ export function RBACManagement() {
         onConfirm={handleDeleteRole}
         resourceName={deletingRole?.name || ''}
         resourceType="role"
+        isDeleting={deleteMutation.isPending}
       />
+
+      <Sheet
+        open={!!viewingMatrixRole}
+        onOpenChange={(open) => !open && setViewingMatrixRole(null)}
+      >
+        <SheetContent side="right" className="sm:max-w-3xl overflow-y-auto">
+          <SheetHeader className="mb-6">
+            <SheetTitle className="flex items-center gap-2">
+              <IconShield className="h-5 w-5 text-primary" />
+              {viewingMatrixRole?.name} - {t('rbac.matrix.title', 'Permission Matrix')}
+            </SheetTitle>
+          </SheetHeader>
+          {viewingMatrixRole && <RBACPermissionMatrix role={viewingMatrixRole} />}
+        </SheetContent>
+      </Sheet>
     </div>
   )
 }

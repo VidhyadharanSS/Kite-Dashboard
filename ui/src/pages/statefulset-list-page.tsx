@@ -4,13 +4,38 @@ import { createColumnHelper } from '@tanstack/react-table'
 import { StatefulSet } from 'kubernetes-types/apps/v1'
 import { useTranslation } from 'react-i18next'
 import { Link } from 'react-router-dom'
+import { toast } from 'sonner'
 
+import * as api from '@/lib/api'
 import { formatDate } from '@/lib/utils'
 import { Badge } from '@/components/ui/badge'
 import { ResourceTable } from '@/components/resource-table'
 
 export function StatefulSetListPage() {
   const { t } = useTranslation()
+
+  const handleBatchRestart = useCallback(async (rows: StatefulSet[]) => {
+    const promises = rows.map((row) => {
+      const name = row.metadata?.name
+      const namespace = row.metadata?.namespace
+      if (!name || !namespace) return Promise.resolve()
+
+      return api.restartResource('statefulsets', name, namespace)
+        .then(() => toast.success(t('deployments.restartSuccess', { name, defaultValue: `Successfully restarted ${name}` })))
+        .catch((error) => {
+          console.error(`Failed to restart ${name}:`, error)
+          toast.error(t('deployments.restartFailed', { name, error: error.message, defaultValue: `Failed to restart ${name}: ${error.message}` }))
+          throw error
+        })
+    })
+
+    try {
+      await Promise.allSettled(promises)
+    } catch (e) {
+      // Errors handled individually
+    }
+  }, [t])
+
   // Define column helper outside of any hooks
   const columnHelper = createColumnHelper<StatefulSet>()
 
@@ -22,9 +47,8 @@ export function StatefulSetListPage() {
         cell: ({ row }) => (
           <div className="font-medium text-blue-500 hover:underline">
             <Link
-              to={`/statefulsets/${row.original.metadata!.namespace}/${
-                row.original.metadata!.name
-              }`}
+              to={`/statefulsets/${row.original.metadata!.namespace}/${row.original.metadata!.name
+                }`}
             >
               {row.original.metadata!.name}
             </Link>
@@ -115,6 +139,8 @@ export function StatefulSetListPage() {
       resourceType="statefulsets"
       columns={columns}
       searchQueryFilter={statefulSetSearchFilter}
+      onBatchRestart={handleBatchRestart}
+      enableLabelFilter={true}
     />
   )
 }

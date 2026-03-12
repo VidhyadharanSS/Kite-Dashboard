@@ -520,9 +520,13 @@ export function NodeDetail(props: { name: string }) {
             ),
           },
           {
-            value: 'topology',
-            label: 'Topology',
-            content: <ResourceTopology resource="nodes" name={name} />,
+            value: 'related',
+            label: 'Related',
+            content: (
+              <div className="animate-in fade-in duration-500">
+                <ResourceTopology resource="nodes" name={name} />
+              </div>
+            ),
           },
           ...(relatedPods && relatedPods.length > 0
             ? [

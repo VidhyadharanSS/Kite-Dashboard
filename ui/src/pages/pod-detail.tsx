@@ -5,12 +5,16 @@ import {
   IconLoader,
   IconRefresh,
   IconTrash,
+  IconBox,
 } from '@tabler/icons-react'
 import * as yaml from 'js-yaml'
 import { Container, Pod } from 'kubernetes-types/core/v1'
 import { useTranslation } from 'react-i18next'
 import { Link } from 'react-router-dom'
+import { useNavigate } from 'react-router-dom'
 import { toast } from 'sonner'
+
+import { useNamespaceContext } from '@/hooks/use-namespace-context'
 
 import { resizePod, updateResource, useResource } from '@/lib/api'
 import { getOwnerInfo, getPodErrorMessage, getPodStatus } from '@/lib/k8s'
@@ -27,6 +31,7 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
+  DialogTrigger,
 } from '@/components/ui/dialog'
 import { Label } from '@/components/ui/label'
 import { ResponsiveTabs } from '@/components/ui/responsive-tabs'
@@ -59,6 +64,9 @@ export function PodDetail(props: { namespace: string; name: string }) {
   const [selectedContainerName, setSelectedContainerName] = useState<string>()
   const [resizeContainer, setResizeContainer] = useState<Container | null>(null)
   const [isResizing, setIsResizing] = useState(false)
+  const navigate = useNavigate()
+  const { setActiveNamespace } = useNamespaceContext()
+
 
   const { t } = useTranslation()
   const { clusters, currentCluster } = useCluster()
@@ -76,6 +84,23 @@ export function PodDetail(props: { namespace: string; name: string }) {
       setYamlContent(yaml.dump(pod, { indent: 2 }))
     }
   }, [pod])
+
+  const ownerInfo = useMemo(() => getOwnerInfo(pod?.metadata), [pod])
+
+  // If the owner is a ReplicaSet, we fetch it to find the parent Deployment
+  const { data: ownerReplicaSet } = useResource(
+    'replicasets',
+    ownerInfo?.kind === 'ReplicaSet' ? ownerInfo.name : '',
+    namespace,
+    { enabled: !!ownerInfo && ownerInfo.kind === 'ReplicaSet' }
+  )
+
+  const parentOwnerInfo = useMemo(() => {
+    if (ownerReplicaSet) {
+      return getOwnerInfo(ownerReplicaSet.metadata)
+    }
+    return null
+  }, [ownerReplicaSet])
 
   useEffect(() => {
     if (!pod || !pod?.spec?.containers?.length) {
@@ -196,7 +221,16 @@ export function PodDetail(props: { namespace: string; name: string }) {
         <div>
           <h1 className="text-lg font-bold">{name}</h1>
           <p className="text-muted-foreground">
-            Namespace: <span className="font-medium">{namespace}</span>
+            Namespace:{' '}
+            <button
+              onClick={() => {
+                setActiveNamespace(namespace)
+                navigate(`/pods?namespace=${namespace}`)
+              }}
+              className="font-medium text-primary hover:underline"
+            >
+              {namespace}
+            </button>
           </p>
         </div>
         <div className="flex gap-2">
@@ -349,27 +383,32 @@ export function PodDetail(props: { namespace: string; name: string }) {
                           {pod.status?.hostIP || 'Not assigned'}
                         </p>
                       </div>
-                      {getOwnerInfo(pod.metadata) && (
+                      {ownerInfo && (
                         <div>
                           <Label className="text-xs text-muted-foreground">
                             Owner
                           </Label>
-                          <p className="text-sm">
-                            {(() => {
-                              const ownerInfo = getOwnerInfo(pod.metadata)
-                              if (!ownerInfo) {
-                                return 'No owner'
-                              }
-                              return (
+                          <div className="flex flex-col gap-1 mt-1">
+                            <p className="text-sm">
+                              <Link
+                                to={ownerInfo.path}
+                                className="text-blue-600 hover:text-blue-800 hover:underline"
+                              >
+                                {ownerInfo.kind}/{ownerInfo.name}
+                              </Link>
+                            </p>
+                            {parentOwnerInfo && (
+                              <p className="text-sm text-muted-foreground flex items-center gap-1">
+                                <span>↳</span>
                                 <Link
-                                  to={ownerInfo.path}
+                                  to={parentOwnerInfo.path}
                                   className="text-blue-600 hover:text-blue-800 hover:underline"
                                 >
-                                  {ownerInfo.kind}/{ownerInfo.name}
+                                  {parentOwnerInfo.kind}/{parentOwnerInfo.name}
                                 </Link>
-                              )
-                            })()}
-                          </p>
+                              </p>
+                            )}
+                          </div>
                         </div>
                       )}
                       <div>
@@ -383,18 +422,34 @@ export function PodDetail(props: { namespace: string; name: string }) {
                               <span
                                 key={`${port.containerPort}-${port.protocol}`}
                               >
-                                <a
-                                  href={withSubPath(
-                                    `/api/v1/namespaces/${namespace}/pods/${name}:${port.containerPort}/proxy/`
-                                  )}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  className="font-mono text-blue-600 hover:text-blue-800 hover:underline inline-flex items-center gap-1"
-                                >
-                                  {port.name && `${port.name}:`}
-                                  {port.containerPort}
-                                  <IconExternalLink className="w-3 h-3" />
-                                </a>
+                                <Dialog>
+                                  <DialogTrigger asChild>
+                                    <button
+                                      className="font-mono text-blue-600 hover:text-blue-800 hover:underline inline-flex items-center gap-1 cursor-pointer"
+                                    >
+                                      {port.name && `${port.name}:`}
+                                      {port.containerPort}
+                                      <IconExternalLink className="w-3 h-3" />
+                                    </button>
+                                  </DialogTrigger>
+                                  <DialogContent className="!max-w-[95vw] w-[95vw] h-[90vh] flex flex-col gap-0 p-0 overflow-hidden">
+                                    <DialogHeader className="px-4 py-3 border-b shrink-0">
+                                      <DialogTitle className="flex items-center gap-2 text-sm">
+                                        <IconBox className="w-4 h-4" />
+                                        Port Proxy — {pod.metadata?.name}:{port.containerPort}
+                                        {port.name && <span className="text-muted-foreground font-normal">({port.name})</span>}
+                                      </DialogTitle>
+                                    </DialogHeader>
+                                    <div className="flex-1 overflow-hidden bg-background">
+                                      <iframe
+                                        src={withSubPath(`/api/v1/namespaces/${namespace}/pods/${name}:${port.containerPort}/proxy/`)}
+                                        className="w-full h-full border-0 block"
+                                        title={`Proxy ${port.containerPort}`}
+                                        style={{ minHeight: 0 }}
+                                      />
+                                    </div>
+                                  </DialogContent>
+                                </Dialog>
                                 {index < array.length - 1 && ', '}
                               </span>
                             ))}
@@ -509,17 +564,6 @@ export function PodDetail(props: { namespace: string; name: string }) {
             ),
           },
           {
-            value: 'topology',
-            label: 'Topology',
-            content: (
-              <ResourceTopology
-                resource="pods"
-                name={name}
-                namespace={namespace}
-              />
-            ),
-          },
-          {
             value: 'logs',
             label: 'Logs',
             content: (
@@ -582,11 +626,18 @@ export function PodDetail(props: { namespace: string; name: string }) {
             value: 'Related',
             label: 'Related',
             content: (
-              <RelatedResourcesTable
-                resource={'pods'}
-                name={name}
-                namespace={namespace}
-              />
+              <div className="space-y-6">
+                <ResourceTopology
+                  resource="pods"
+                  name={name}
+                  namespace={namespace}
+                />
+                <RelatedResourcesTable
+                  resource={'pods'}
+                  name={name}
+                  namespace={namespace}
+                />
+              </div>
             ),
           },
           {

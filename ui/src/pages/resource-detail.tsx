@@ -14,6 +14,7 @@ import { SecretDetail } from './secret-detail'
 import { ServiceDetail } from './service-detail'
 import { SimpleResourceDetail } from './simple-resource-detail'
 import { StatefulSetDetail } from './statefulset-detail'
+import { NamespaceDetail } from './namespace-detail'
 
 function getResourceTypeName(resource: string): string {
   const resourceMap: Record<string, string> = {
@@ -72,6 +73,8 @@ export function ResourceDetail() {
       return <NodeDetail name={name} />
     case 'services':
       return <ServiceDetail namespace={namespace!} name={name} />
+    case 'namespaces':
+      return <NamespaceDetail name={name} />
     default:
       return (
         <SimpleResourceDetail

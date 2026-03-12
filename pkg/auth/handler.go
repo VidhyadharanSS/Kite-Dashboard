@@ -4,6 +4,7 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/zxh326/kite/pkg/common"
@@ -258,6 +259,9 @@ func (h *AuthHandler) RequireAPIKeyAuth(c *gin.Context, token string) {
 		return
 	}
 	_ = model.LoginUser(apikey)
+	now := time.Now()
+	apikey.LastUsedAt = &now
+	_ = model.DB.Model(apikey).Update("last_used_at", now)
 	apikey.Roles = rbac.GetUserRoles(*apikey)
 	c.Set("user", *apikey)
 }
@@ -328,6 +332,10 @@ func (h *AuthHandler) RequireAuth() gin.HandlerFunc {
 			return
 		}
 		user.Roles = rbac.GetUserRoles(*user)
+		now := time.Now()
+		user.LastUsedAt = &now
+		_ = model.DB.Model(user).Update("last_used_at", now)
+		_ = model.UpdateUserSessionActivity(tokenString, c.ClientIP())
 		c.Set("user", *user)
 		c.Next()
 	}

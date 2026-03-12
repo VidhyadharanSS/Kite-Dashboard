@@ -1,4 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
+import { useNamespaceContext } from '@/hooks/use-namespace-context'
+
 import { IconLoader, IconRefresh, IconTrash } from '@tabler/icons-react'
 import { formatDistance } from 'date-fns'
 import * as yaml from 'js-yaml'
@@ -84,6 +87,9 @@ export function JobDetail(props: { namespace: string; name: string }) {
   const [isSavingYaml, setIsSavingYaml] = useState(false)
   const [refreshKey, setRefreshKey] = useState(0)
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
+  const navigate = useNavigate()
+  const { setActiveNamespace } = useNamespaceContext()
+
   const { t } = useTranslation()
 
   const {
@@ -165,7 +171,16 @@ export function JobDetail(props: { namespace: string; name: string }) {
         <div>
           <h1 className="text-lg font-bold">{name}</h1>
           <p className="text-muted-foreground">
-            Namespace: <span className="font-medium">{namespace}</span>
+            Namespace:{' '}
+            <button
+              onClick={() => {
+                setActiveNamespace(namespace)
+                navigate(`/pods?namespace=${namespace}`)
+              }}
+              className="font-medium text-primary hover:underline"
+            >
+              {namespace}
+            </button>
           </p>
         </div>
         <div className="flex gap-2">
@@ -383,17 +398,6 @@ export function JobDetail(props: { namespace: string; name: string }) {
               />
             ),
           },
-          {
-            value: 'topology',
-            label: 'Topology',
-            content: (
-              <ResourceTopology
-                resource="jobs"
-                name={name}
-                namespace={namespace}
-              />
-            ),
-          },
           ...(pods && pods.length > 0
             ? [
               {
@@ -441,11 +445,18 @@ export function JobDetail(props: { namespace: string; name: string }) {
             value: 'related',
             label: 'Related',
             content: (
-              <RelatedResourcesTable
-                resource={'jobs'}
-                name={name}
-                namespace={namespace}
-              />
+              <div className="space-y-6">
+                <ResourceTopology
+                  resource="jobs"
+                  name={name}
+                  namespace={namespace}
+                />
+                <RelatedResourcesTable
+                  resource={'jobs'}
+                  name={name}
+                  namespace={namespace}
+                />
+              </div>
             ),
           },
           {

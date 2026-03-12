@@ -9,6 +9,7 @@ import { Dialog, DialogContent, DialogTrigger } from '@/components/ui/dialog'
 import { TextViewer } from './text-viewer'
 import { Button } from './ui/button'
 import { Tooltip, TooltipContent, TooltipTrigger } from './ui/tooltip'
+import { cn } from '@/lib/utils'
 
 interface QuickYamlDialogProps {
     resourceType: ResourceType
@@ -18,6 +19,7 @@ interface QuickYamlDialogProps {
     triggerVariant?: 'outline' | 'ghost' | 'default'
     triggerSize?: 'sm' | 'default' | 'icon'
     customTrigger?: React.ReactNode
+    className?: string
 }
 
 export function QuickYamlDialog({
@@ -28,6 +30,7 @@ export function QuickYamlDialog({
     triggerVariant = 'outline',
     triggerSize = 'sm',
     customTrigger,
+    className,
 }: QuickYamlDialogProps) {
     const [isOpen, setIsOpen] = useState(false)
     const { data, isLoading } = useResource(resourceType, name, namespace, {
@@ -42,16 +45,18 @@ export function QuickYamlDialog({
                 {customTrigger ? (
                     customTrigger
                 ) : triggerAsText ? (
-                    <Button variant={triggerVariant} size={triggerSize} className="gap-2">
+                    <Button variant={triggerVariant} size={triggerSize} className={cn("gap-2", className)}>
                         <IconFileCode className="w-4 h-4" />
                         View YAML
                     </Button>
                 ) : (
                     <Tooltip>
                         <TooltipTrigger asChild>
-                            <Button variant={triggerVariant} size={triggerSize}>
-                                <IconFileCode className="w-4 h-4" />
-                            </Button>
+                            <DialogTrigger asChild>
+                                <Button variant={triggerVariant} size={triggerSize} className={className}>
+                                    <IconFileCode className="w-4 h-4" />
+                                </Button>
+                            </DialogTrigger>
                         </TooltipTrigger>
                         <TooltipContent>View YAML</TooltipContent>
                     </Tooltip>

@@ -3,6 +3,7 @@ package handlers
 import (
 	"fmt"
 	"net/http"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -122,40 +123,53 @@ func getResourceOrder(resourceType string) int {
 	return len(resourceOrder) // Default to the end if not found
 }
 
-// sortResults sorts the search results with exact matches first, then by resource type
+// sortResults sorts the search results with a more robust scoring algorithm
 func sortResults(results []common.SearchResult, query string) {
-	var exactMatches, partialMatches []common.SearchResult
+	if len(results) <= 1 {
+		return
+	}
 
-	for _, result := range results {
-		if strings.ToLower(result.Name) == query {
-			exactMatches = append(exactMatches, result)
-		} else {
-			partialMatches = append(partialMatches, result)
+	query = strings.ToLower(query)
+	
+	// Pre-calculate scores for all results to avoid redundant string operations
+	scores := make(map[string]int)
+	for _, r := range results {
+		score := 0
+		nameLower := strings.ToLower(r.Name)
+		
+		// 1. Name matches (Highest priority)
+		if nameLower == query {
+			score += 1000
+		} else if strings.HasPrefix(nameLower, query) {
+			score += 500
+		} else if strings.Contains(nameLower, query) {
+			score += 200
 		}
-	}
-
-	// sort by resources
-	sortByResources := func(a, b common.SearchResult) bool {
-		return getResourceOrder(a.ResourceType) < getResourceOrder(b.ResourceType)
-	}
-
-	// Simple bubble sort for demonstration
-	for i := 0; i < len(exactMatches)-1; i++ {
-		for j := 0; j < len(exactMatches)-i-1; j++ {
-			if !sortByResources(exactMatches[j], exactMatches[j+1]) {
-				exactMatches[j], exactMatches[j+1] = exactMatches[j+1], exactMatches[j]
-			}
+		
+		// 2. Namespace match (Bonus)
+		if strings.ToLower(r.Namespace) == query {
+			score += 300
+		} else if strings.HasPrefix(strings.ToLower(r.Namespace), query) {
+			score += 100
 		}
+		
+		// 3. Resource type weighting (Tie-breaker)
+		// Lower order (more important) gets higher score
+		score += (10 - getResourceOrder(r.ResourceType)) * 10
+		
+		scores[r.ID] = score
 	}
 
-	for i := 0; i < len(partialMatches)-1; i++ {
-		for j := 0; j < len(partialMatches)-i-1; j++ {
-			if !sortByResources(partialMatches[j], partialMatches[j+1]) {
-				partialMatches[j], partialMatches[j+1] = partialMatches[j+1], partialMatches[j]
-			}
+	// Sort based on calculated scores
+	sort.Slice(results, func(i, j int) bool {
+		scoreI := scores[results[i].ID]
+		scoreJ := scores[results[j].ID]
+		
+		if scoreI != scoreJ {
+			return scoreI > scoreJ
 		}
-	}
-
-	// Combine results
-	copy(results, append(exactMatches, partialMatches...))
+		
+		// If scores are equal, sort alphabetically by name
+		return results[i].Name < results[j].Name
+	})
 }

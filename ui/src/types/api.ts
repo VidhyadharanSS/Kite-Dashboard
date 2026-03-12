@@ -404,6 +404,7 @@ export interface UserItem {
   name?: string
   email?: string
   roles?: Role[]
+  lastUsedAt?: string
 }
 
 export interface FetchUserListResponse {
@@ -418,6 +419,7 @@ export interface APIKey {
   username: string
   apiKey: string
   lastLoginAt?: string
+  lastUsedAt?: string
   createdAt: string
   updatedAt: string
   roles?: Role[]

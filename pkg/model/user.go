@@ -26,7 +26,21 @@ type User struct {
 	APIKey SecretString  `json:"apiKey,omitempty" gorm:"type:text"`
 	Roles  []common.Role `json:"roles,omitempty" gorm:"-"`
 
+	LastUsedAt *time.Time `json:"lastUsedAt,omitempty" gorm:"type:timestamp;index"`
+	ExpiresAt  *time.Time `json:"expiresAt,omitempty" gorm:"type:timestamp;index"`
+
 	SidebarPreference string `json:"sidebar_preference,omitempty" gorm:"type:text"`
+}
+
+type UserSession struct {
+	ID        uint      `json:"id" gorm:"primarykey"`
+	UserID    uint      `json:"userId" gorm:"index"`
+	Token     string    `json:"-" gorm:"uniqueIndex"`
+	IP        string    `json:"ip" gorm:"type:varchar(50)"`
+	UserAgent string    `json:"userAgent" gorm:"type:text"`
+	CreatedAt time.Time `json:"createdAt"`
+	LastUsedAt time.Time `json:"lastUsedAt" gorm:"index"`
+	ExpiresAt  time.Time `json:"expiresAt" gorm:"index"`
 }
 
 func (u *User) Key() string {
@@ -282,6 +296,27 @@ func ListAPIKeyUsers() (users []User, err error) {
 	err = DB.Order("id desc").Where("provider = ?", common.APIKeyProvider).Find(&users).Error
 	return users, err
 }
+
+func ListUserSessions(userID uint) (sessions []UserSession, err error) {
+	err = DB.Where("user_id = ? AND expires_at > ?", userID, time.Now()).Order("last_used_at desc").Find(&sessions).Error
+	return sessions, err
+}
+
+func DeleteUserSession(userID uint, sessionID uint) error {
+	return DB.Where("id = ? AND user_id = ?", sessionID, userID).Delete(&UserSession{}).Error
+}
+
+func CreateUserSession(session *UserSession) error {
+	return DB.Create(session).Error
+}
+
+func UpdateUserSessionActivity(token string, ip string) error {
+	return DB.Model(&UserSession{}).Where("token = ?", token).Updates(map[string]interface{}{
+		"last_used_at": time.Now(),
+		"ip":           ip,
+	}).Error
+}
+
 
 var (
 	AnonymousUser = User{

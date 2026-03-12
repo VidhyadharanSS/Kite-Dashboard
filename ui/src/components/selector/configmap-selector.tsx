@@ -2,13 +2,7 @@ import { useMemo } from 'react'
 import { ConfigMap } from 'kubernetes-types/core/v1'
 
 import { useResources } from '@/lib/api'
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select'
+import { Combobox, ComboboxOption } from '@/components/ui/combobox'
 
 export function ConfigMapSelector({
   selectedConfigMap,
@@ -25,39 +19,32 @@ export function ConfigMapSelector({
 }) {
   const { data, isLoading } = useResources('configmaps', namespace)
 
-  const sortedConfigMaps = useMemo(() => {
-    return data?.slice().sort((a, b) => {
-      const nameA = a.metadata?.name?.toLowerCase() || ''
-      const nameB = b.metadata?.name?.toLowerCase() || ''
-      return nameA.localeCompare(nameB)
-    })
+  const options: ComboboxOption[] = useMemo(() => {
+    return (
+      data
+        ?.slice()
+        .sort((a, b) => {
+          const nameA = a.metadata?.name?.toLowerCase() || ''
+          const nameB = b.metadata?.name?.toLowerCase() || ''
+          return nameA.localeCompare(nameB)
+        })
+        .map((cm: ConfigMap) => ({
+          value: cm.metadata!.name!,
+          label: cm.metadata!.name!,
+        })) || []
+    )
   }, [data])
 
   return (
-    <Select value={selectedConfigMap} onValueChange={onConfigMapChange}>
-      <SelectTrigger className={className}>
-        <SelectValue placeholder={placeholder} />
-      </SelectTrigger>
-      <SelectContent>
-        {isLoading && (
-          <SelectItem disabled value="_loading">
-            Loading configmaps...
-          </SelectItem>
-        )}
-        {sortedConfigMaps?.map((configMap: ConfigMap) => (
-          <SelectItem
-            key={configMap.metadata!.name}
-            value={configMap.metadata!.name!}
-          >
-            {configMap.metadata!.name}
-          </SelectItem>
-        ))}
-        {!isLoading && (!sortedConfigMaps || sortedConfigMaps.length === 0) && (
-          <SelectItem disabled value="_empty">
-            No configmaps found
-          </SelectItem>
-        )}
-      </SelectContent>
-    </Select>
+    <Combobox
+      options={options}
+      value={selectedConfigMap}
+      onValueChange={onConfigMapChange}
+      placeholder={isLoading ? 'Loading...' : placeholder}
+      searchPlaceholder="Search configmaps..."
+      emptyText="No configmaps found."
+      triggerClassName={className}
+      disabled={isLoading}
+    />
   )
 }

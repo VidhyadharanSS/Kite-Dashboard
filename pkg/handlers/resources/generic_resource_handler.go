@@ -152,6 +152,7 @@ func (h *GenericResourceHandler[T, V]) Get(c *gin.Context) {
 func (h *GenericResourceHandler[T, V]) list(c *gin.Context) (V, error) {
 	var zero V
 	cs := c.MustGet("cluster").(*cluster.ClientSet)
+	
 	objectList := reflect.New(h.listType).Interface().(V)
 
 	ctx := c.Request.Context()
@@ -245,7 +246,6 @@ func (h *GenericResourceHandler[T, V]) list(c *gin.Context) (V, error) {
 		if anno != nil {
 			delete(anno, common.KubectlAnnotation)
 		}
-		// for namespaces, we need to ensure user has permission to view them
 		if h.Name() == "namespaces" && !rbac.CanAccessNamespace(user, cs.Name, obj.GetName()) {
 			continue
 		}
@@ -260,11 +260,46 @@ func (h *GenericResourceHandler[T, V]) list(c *gin.Context) (V, error) {
 }
 
 func (h *GenericResourceHandler[T, V]) List(c *gin.Context) {
-	object, err := h.list(c)
+	objectList, err := h.list(c)
 	if err != nil {
 		return
 	}
-	c.JSON(http.StatusOK, object)
+
+	reduce := c.Query("reduce") == "true"
+	if reduce {
+		items, err := meta.ExtractList(objectList)
+		if err == nil {
+			reducedItems := make([]runtime.Object, 0, len(items))
+			for _, item := range items {
+				obj, ok := item.(client.Object)
+				if !ok {
+					reducedItems = append(reducedItems, item)
+					continue
+				}
+
+				// Create a shallow copy and strip heavy fields
+				reduced := obj.DeepCopyObject().(client.Object)
+				reduced.SetManagedFields(nil)
+				
+				// Keep only basic metadata
+				metaInfo := metav1.ObjectMeta{
+					Name:              reduced.GetName(),
+					Namespace:         reduced.GetNamespace(),
+					UID:               reduced.GetUID(),
+					CreationTimestamp: reduced.GetCreationTimestamp(),
+					Labels:            reduced.GetLabels(),
+				}
+				
+				// Use reflection to set bit-reduced metadata
+				reflect.ValueOf(reduced).Elem().FieldByName("ObjectMeta").Set(reflect.ValueOf(metaInfo))
+				
+				reducedItems = append(reducedItems, reduced)
+			}
+			_ = meta.SetList(objectList, reducedItems)
+		}
+	}
+
+	c.JSON(http.StatusOK, objectList)
 }
 
 func (h *GenericResourceHandler[T, V]) Create(c *gin.Context) {
@@ -281,12 +316,13 @@ func (h *GenericResourceHandler[T, V]) Create(c *gin.Context) {
 	var success bool
 	var errMsg string
 	var empty T
+	start := time.Now()
 	defer func() {
 		h.recordHistory(c, "create", empty, resource, success, errMsg)
 		if success {
 			user := c.MustGet("user").(model.User)
 			cs := c.MustGet("cluster").(*cluster.ClientSet)
-			logger.Audit(user.Key(), "Create", h.name, resource.GetNamespace(), cs.Name, fmt.Sprintf("Created resource %s", resource.GetName()))
+			logger.Audit(user.Key(), "Create", h.name, resource.GetNamespace(), cs.Name, fmt.Sprintf("Created resource %s", resource.GetName()), time.Since(start))
 		}
 	}()
 
@@ -322,12 +358,13 @@ func (h *GenericResourceHandler[T, V]) Update(c *gin.Context) {
 
 	var success bool
 	var errMsg string
+	start := time.Now()
 	defer func() {
 		h.recordHistory(c, "update", oldObj, resource, success, errMsg)
 		if success {
 			user := c.MustGet("user").(model.User)
 			cs := c.MustGet("cluster").(*cluster.ClientSet)
-			logger.Audit(user.Key(), "Update", h.name, resource.GetNamespace(), cs.Name, fmt.Sprintf("Updated resource %s", resource.GetName()))
+			logger.Audit(user.Key(), "Update", h.name, resource.GetNamespace(), cs.Name, fmt.Sprintf("Updated resource %s", resource.GetName()), time.Since(start))
 		}
 	}()
 
@@ -389,12 +426,13 @@ func (h *GenericResourceHandler[T, V]) Patch(c *gin.Context) {
 
 	success := false
 	var errMsg string
+	start := time.Now()
 	defer func() {
 		h.recordHistory(c, "patch", prevObj, oldObj, success, errMsg)
 		if success {
 			user := c.MustGet("user").(model.User)
 			cs := c.MustGet("cluster").(*cluster.ClientSet)
-			logger.Audit(user.Key(), "Patch", h.name, oldObj.GetNamespace(), cs.Name, fmt.Sprintf("Patched resource %s", oldObj.GetName()))
+			logger.Audit(user.Key(), "Patch", h.name, oldObj.GetNamespace(), cs.Name, fmt.Sprintf("Patched resource %s", oldObj.GetName()), time.Since(start))
 		}
 	}()
 
@@ -423,6 +461,7 @@ func (h *GenericResourceHandler[T, V]) Delete(c *gin.Context) {
 	}
 
 	ctx := c.Request.Context()
+	start := time.Now()
 	if err := cs.K8sClient.Get(ctx, namespacedName, resource); err != nil {
 		if errors.IsNotFound(err) {
 			c.JSON(http.StatusNotFound, gin.H{"error": "not found"})
@@ -456,7 +495,7 @@ func (h *GenericResourceHandler[T, V]) Delete(c *gin.Context) {
 	}
 
 	user := c.MustGet("user").(model.User)
-	logger.Audit(user.Key(), "Delete", h.name, resource.GetNamespace(), cs.Name, fmt.Sprintf("Deleted resource %s", resource.GetName()))
+	logger.Audit(user.Key(), "Delete", h.name, resource.GetNamespace(), cs.Name, fmt.Sprintf("Deleted resource %s", resource.GetName()), time.Since(start))
 
 	if wait {
 		timeout := 1 * time.Minute

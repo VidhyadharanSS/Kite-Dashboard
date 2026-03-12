@@ -15,6 +15,8 @@ import {
     IconZoomIn,
     IconZoomOut,
     IconRefresh,
+    IconMaximize,
+    IconMinimize,
 } from '@tabler/icons-react'
 import { Link } from 'react-router-dom'
 
@@ -38,38 +40,60 @@ interface NodeType {
 }
 
 const RESOURCE_ICONS: Record<string, React.ReactNode> = {
-    ingress: <IconCloud size={20} />,
-    ingresses: <IconCloud size={20} />,
-    service: <IconNetwork size={20} />,
-    services: <IconNetwork size={20} />,
-    deployment: <IconServer size={20} />,
-    deployments: <IconServer size={20} />,
-    statefulset: <IconDatabase size={20} />,
-    statefulsets: <IconDatabase size={20} />,
-    daemonset: <IconCircles size={20} />,
-    daemonsets: <IconCircles size={20} />,
-    pod: <IconBox size={20} />,
-    pods: <IconBox size={20} />,
-    configmap: <IconSettings size={20} />,
-    configmaps: <IconSettings size={20} />,
-    secret: <IconLock size={20} />,
-    secrets: <IconLock size={20} />,
-    persistentvolumeclaim: <IconDatabase size={20} />,
-    persistentvolumeclaims: <IconDatabase size={20} />,
-    persistentvolume: <IconDatabaseExport size={20} />,
-    persistentvolumes: <IconDatabaseExport size={20} />,
-    storageclass: <IconRoute size={20} />,
-    storageclasses: <IconRoute size={20} />,
-    node: <IconServer2 size={20} />,
-    nodes: <IconServer2 size={20} />,
+    ingress: <IconCloud size={18} />,
+    ingresses: <IconCloud size={18} />,
+    service: <IconNetwork size={18} />,
+    services: <IconNetwork size={18} />,
+    deployment: <IconServer size={18} />,
+    deployments: <IconServer size={18} />,
+    statefulset: <IconDatabase size={18} />,
+    statefulsets: <IconDatabase size={18} />,
+    daemonset: <IconCircles size={18} />,
+    daemonsets: <IconCircles size={18} />,
+    pod: <IconBox size={18} />,
+    pods: <IconBox size={18} />,
+    configmap: <IconSettings size={18} />,
+    configmaps: <IconSettings size={18} />,
+    secret: <IconLock size={18} />,
+    secrets: <IconLock size={18} />,
+    persistentvolumeclaim: <IconDatabase size={18} />,
+    persistentvolumeclaims: <IconDatabase size={18} />,
+    persistentvolume: <IconDatabaseExport size={18} />,
+    persistentvolumes: <IconDatabaseExport size={18} />,
+    storageclass: <IconRoute size={18} />,
+    storageclasses: <IconRoute size={18} />,
+    node: <IconServer2 size={18} />,
+    nodes: <IconServer2 size={18} />,
+    namespace: <IconServer2 size={18} />,
+    namespaces: <IconServer2 size={18} />,
 }
 
+// Color mapping per resource type for visual differentiation
+const RESOURCE_COLORS: Record<string, { bg: string; border: string; text: string; badge: string }> = {
+    deployments: { bg: 'bg-blue-500/10 dark:bg-blue-500/20', border: 'border-blue-400/50', text: 'text-blue-600 dark:text-blue-400', badge: 'bg-blue-500/20 text-blue-700 dark:text-blue-300' },
+    statefulsets: { bg: 'bg-indigo-500/10 dark:bg-indigo-500/20', border: 'border-indigo-400/50', text: 'text-indigo-600 dark:text-indigo-400', badge: 'bg-indigo-500/20 text-indigo-700 dark:text-indigo-300' },
+    daemonsets: { bg: 'bg-purple-500/10 dark:bg-purple-500/20', border: 'border-purple-400/50', text: 'text-purple-600 dark:text-purple-400', badge: 'bg-purple-500/20 text-purple-700 dark:text-purple-300' },
+    pods: { bg: 'bg-sky-500/10 dark:bg-sky-500/20', border: 'border-sky-400/50', text: 'text-sky-600 dark:text-sky-400', badge: 'bg-sky-500/20 text-sky-700 dark:text-sky-300' },
+    services: { bg: 'bg-emerald-500/10 dark:bg-emerald-500/20', border: 'border-emerald-400/50', text: 'text-emerald-600 dark:text-emerald-400', badge: 'bg-emerald-500/20 text-emerald-700 dark:text-emerald-300' },
+    ingresses: { bg: 'bg-teal-500/10 dark:bg-teal-500/20', border: 'border-teal-400/50', text: 'text-teal-600 dark:text-teal-400', badge: 'bg-teal-500/20 text-teal-700 dark:text-teal-300' },
+    configmaps: { bg: 'bg-yellow-500/10 dark:bg-yellow-500/20', border: 'border-yellow-400/50', text: 'text-yellow-600 dark:text-yellow-400', badge: 'bg-yellow-500/20 text-yellow-700 dark:text-yellow-300' },
+    secrets: { bg: 'bg-rose-500/10 dark:bg-rose-500/20', border: 'border-rose-400/50', text: 'text-rose-600 dark:text-rose-400', badge: 'bg-rose-500/20 text-rose-700 dark:text-rose-300' },
+    persistentvolumeclaims: { bg: 'bg-orange-500/10', border: 'border-orange-400/50', text: 'text-orange-600 dark:text-orange-400', badge: 'bg-orange-500/20 text-orange-700 dark:text-orange-300' },
+    persistentvolumes: { bg: 'bg-amber-500/10', border: 'border-amber-400/50', text: 'text-amber-600 dark:text-amber-400', badge: 'bg-amber-500/20 text-amber-700' },
+    nodes: { bg: 'bg-slate-500/10', border: 'border-slate-400/50', text: 'text-slate-600 dark:text-slate-400', badge: 'bg-slate-500/20 text-slate-700 dark:text-slate-300' },
+    namespaces: { bg: 'bg-violet-500/10', border: 'border-violet-400/50', text: 'text-violet-600 dark:text-violet-400', badge: 'bg-violet-500/20 text-violet-700 dark:text-violet-300' },
+}
+
+const DEFAULT_COLOR = { bg: 'bg-muted/60', border: 'border-border', text: 'text-muted-foreground', badge: 'bg-muted text-muted-foreground' }
+
 const LAYER_ORDER = [
+    ['namespaces', 'namespace'],
+    ['nodes', 'node'],
     ['ingresses', 'ingress'],
     ['services', 'service'],
     ['deployments', 'deployment', 'statefulsets', 'statefulset', 'daemonsets', 'daemonset'],
     ['pods', 'pod'],
-    ['configmaps', 'configmap', 'secrets', 'secret', 'persistentvolumeclaims', 'pvc', 'persistentvolumes', 'pv', 'storageclasses', 'node', 'nodes'],
+    ['configmaps', 'configmap', 'secrets', 'secret', 'persistentvolumeclaims', 'pvc', 'persistentvolumes', 'pv', 'storageclasses'],
 ]
 
 interface Position {
@@ -91,14 +115,16 @@ export function ResourceTopology({
     const [zoom, setZoom] = useState(1)
     const [offset, setOffset] = useState({ x: 0, y: 0 })
     const [isDragging, setIsDragging] = useState(false)
+    const [isFullscreen, setIsFullscreen] = useState(false)
     const dragStartRef = useRef<Position>({ x: 0, y: 0 })
     const containerRef = useRef<HTMLDivElement>(null)
     const contentRef = useRef<HTMLDivElement>(null)
 
+    const rootId = `${resource}:${namespace || ''}:${name}`
+
     const layers = useMemo(() => {
         if (!related) return []
 
-        const rootId = `${resource}:${namespace || ''}:${name}`
         const nodes: NodeType[] = [
             { id: rootId, name, type: resource, namespace },
             ...(related.nodes || []).map((r) => ({
@@ -123,7 +149,7 @@ export function ResourceTopology({
         })
 
         return result.filter(layer => layer.length > 0)
-    }, [related, name, resource, namespace])
+    }, [related, name, resource, namespace, rootId])
 
     const updatePositions = useCallback(() => {
         if (!contentRef.current || !containerRef.current) return
@@ -145,7 +171,7 @@ export function ResourceTopology({
     }, [layers, zoom])
 
     useEffect(() => {
-        const timeout = setTimeout(updatePositions, 100)
+        const timeout = setTimeout(updatePositions, 150)
         window.addEventListener('resize', updatePositions)
         return () => {
             clearTimeout(timeout)
@@ -162,7 +188,7 @@ export function ResourceTopology({
     }, [])
 
     const handleMouseDown = useCallback((e: React.MouseEvent) => {
-        if (e.button === 0) { // Left click for panning
+        if (e.button === 0) {
             setIsDragging(true)
             dragStartRef.current = { x: e.clientX - offset.x, y: e.clientY - offset.y }
         }
@@ -177,37 +203,72 @@ export function ResourceTopology({
         }
     }, [isDragging])
 
-    const handleMouseUp = useCallback(() => {
-        setIsDragging(false)
-    }, [])
-
+    const handleMouseUp = useCallback(() => setIsDragging(false), [])
     const handleZoomIn = () => setZoom(prev => Math.min(prev * 1.2, 3))
     const handleZoomOut = () => setZoom(prev => Math.max(prev * 0.8, 0.2))
-    const handleReset = () => {
-        setZoom(1)
-        setOffset({ x: 0, y: 0 })
-    }
+    const handleReset = () => { setZoom(1); setOffset({ x: 0, y: 0 }) }
+
+    const totalNodes = (related?.nodes?.length || 0) + 1
 
     if (isLoading) {
-        return <div className="p-8 text-center text-muted-foreground">Loading topology...</div>
+        return (
+            <div className="flex flex-col items-center justify-center min-h-[400px] gap-3">
+                <div className="animate-spin rounded-full h-8 w-8 border-2 border-primary border-t-transparent" />
+                <p className="text-sm text-muted-foreground">Building topology graph...</p>
+            </div>
+        )
+    }
+
+    if (!related || totalNodes <= 1) {
+        return (
+            <div className="flex flex-col items-center justify-center min-h-[400px] gap-4 text-center">
+                <div className="rounded-full bg-muted/50 p-4">
+                    <IconServer2 size={32} className="text-muted-foreground/50" />
+                </div>
+                <div>
+                    <p className="font-medium text-foreground">No related resources found</p>
+                    <p className="text-sm text-muted-foreground mt-1">
+                        This {resource} doesn't have discoverable related resources yet.
+                    </p>
+                </div>
+            </div>
+        )
     }
 
     return (
-        <Card className="overflow-hidden bg-slate-50/50 dark:bg-slate-900/50 border-dashed relative">
-            <div className="absolute top-4 left-4 z-50 flex flex-col gap-2">
-                <Button variant="secondary" size="icon" onClick={handleZoomIn} title="Zoom In">
-                    <IconZoomIn size={18} />
+        <Card className={`overflow-hidden bg-dot-pattern bg-slate-50/50 dark:bg-slate-950/50 border relative ${isFullscreen ? 'fixed inset-4 z-50' : ''}`}>
+            {/* Toolbar */}
+            <div className="absolute top-3 left-3 z-50 flex flex-col gap-1.5">
+                <Button variant="secondary" size="icon" className="h-8 w-8 shadow-md" onClick={handleZoomIn} title="Zoom In">
+                    <IconZoomIn size={15} />
                 </Button>
-                <Button variant="secondary" size="icon" onClick={handleZoomOut} title="Zoom Out">
-                    <IconZoomOut size={18} />
+                <Button variant="secondary" size="icon" className="h-8 w-8 shadow-md" onClick={handleZoomOut} title="Zoom Out">
+                    <IconZoomOut size={15} />
                 </Button>
-                <Button variant="secondary" size="icon" onClick={handleReset} title="Reset View">
-                    <IconRefresh size={18} />
+                <Button variant="secondary" size="icon" className="h-8 w-8 shadow-md" onClick={handleReset} title="Reset View">
+                    <IconRefresh size={15} />
+                </Button>
+                <Button variant="secondary" size="icon" className="h-8 w-8 shadow-md" onClick={() => setIsFullscreen(f => !f)} title={isFullscreen ? "Exit Fullscreen" : "Fullscreen"}>
+                    {isFullscreen ? <IconMinimize size={15} /> : <IconMaximize size={15} />}
                 </Button>
             </div>
 
+            {/* Stats badge */}
+            <div className="absolute top-3 right-3 z-50">
+                <Badge variant="secondary" className="text-xs shadow-md">
+                    {totalNodes} resource{totalNodes !== 1 ? 's' : ''} · {related?.links?.length || 0} link{(related?.links?.length || 0) !== 1 ? 's' : ''}
+                </Badge>
+            </div>
+
+            {/* Zoom level indicator */}
+            <div className="absolute bottom-3 left-3 z-50">
+                <Badge variant="outline" className="text-xs font-mono opacity-60">
+                    {Math.round(zoom * 100)}%
+                </Badge>
+            </div>
+
             <CardContent
-                className="p-0 relative min-h-[500px] cursor-grab active:cursor-grabbing overflow-hidden"
+                className={`p-0 relative ${isFullscreen ? 'h-full' : 'min-h-[520px]'} cursor-grab active:cursor-grabbing overflow-hidden`}
                 ref={containerRef}
                 onWheel={handleWheel}
                 onMouseDown={handleMouseDown}
@@ -217,25 +278,27 @@ export function ResourceTopology({
             >
                 <div
                     ref={contentRef}
-                    className="absolute inset-0 transition-transform duration-75"
+                    className="absolute inset-0"
                     style={{
                         transform: `translate(${offset.x}px, ${offset.y}px) scale(${zoom})`,
                         transformOrigin: '50% 50%',
+                        transition: isDragging ? 'none' : 'transform 0.1s ease-out',
                     }}
                 >
-                    <div className="p-8 min-w-full min-h-full inline-block">
-                        {/* Connection Lines rendered first to be behind nodes */}
+                    <div className="p-10 min-w-full min-h-full inline-block">
+                        {/* Connection Lines */}
                         {related && <TopologyLines links={related.links || []} positions={nodePositions} />}
 
-                        <div className="flex flex-col items-center justify-between gap-16 relative z-10">
+                        {/* Layered nodes */}
+                        <div className="flex flex-col items-center justify-start gap-12 relative z-10">
                             {layers.map((layer, lIdx) => (
-                                <div key={`layer-${lIdx}`} className="flex justify-center gap-8 flex-wrap w-full">
+                                <div key={`layer-${lIdx}`} className="flex justify-center gap-6 flex-wrap w-full">
                                     {layer.map((node) => (
                                         <TopologyNode
                                             key={node.id}
                                             id={node.id}
                                             node={node}
-                                            isRoot={node.id === `${resource}:${namespace || ''}:${name}`}
+                                            isRoot={node.id === rootId}
                                         />
                                     ))}
                                 </div>
@@ -244,6 +307,11 @@ export function ResourceTopology({
                     </div>
                 </div>
             </CardContent>
+
+            {/* Hint text */}
+            <div className="absolute bottom-3 right-3 z-50 text-[10px] text-muted-foreground/50 hidden md:block">
+                Scroll + Ctrl to zoom · Drag to pan
+            </div>
         </Card>
     )
 }
@@ -266,41 +334,56 @@ function TopologyNode({ id, node, isRoot }: { id: string, node: NodeType; isRoot
                 role.resources?.some((r: string) => r === '*' || r === node.type || r === node.type.toLowerCase())
             const hasVerb = role.name === 'admin' || role.name === 'viewer' ||
                 role.verbs?.some((v: string) => v === '*' || v === 'get' || v === 'list')
-
             const hasNamespace = !node.namespace || role.namespaces?.includes(node.namespace) || role.namespaces?.includes('*')
 
             return hasResource && hasVerb && hasNamespace
         }) || false
     }, [user, node])
 
+    const colors = RESOURCE_COLORS[node.type.toLowerCase()] || DEFAULT_COLOR
+
     const nodeContent = (
         <div
             id={id}
             className={`
-                relative flex flex-col items-center p-3 rounded-xl border transition-all duration-300 group z-20 min-w-[100px] cursor-pointer
+                relative flex flex-col items-center p-3 pt-4 rounded-xl border-2 transition-all duration-200 group z-20 min-w-[110px] max-w-[130px] cursor-pointer select-none
                 ${isRoot
-                    ? 'bg-blue-600 text-white border-blue-700 shadow-lg shadow-blue-500/20 scale-110'
-                    : 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 hover:border-blue-400 hover:shadow-md'}
+                    ? 'bg-primary text-primary-foreground border-primary shadow-lg shadow-primary/25 scale-110 ring-4 ring-primary/20'
+                    : `${colors.bg} ${colors.border} hover:shadow-lg hover:border-primary/50 hover:scale-105 bg-background dark:bg-card`
+                }
             `}
         >
-            <div className={`mb-2 ${isRoot ? 'text-white' : 'text-blue-500'}`}>
-                {RESOURCE_ICONS[node.type.toLowerCase()] || <IconBox size={20} />}
+            {/* Icon */}
+            <div className={`mb-2 ${isRoot ? 'text-primary-foreground' : colors.text}`}>
+                {RESOURCE_ICONS[node.type.toLowerCase()] || <IconBox size={18} />}
             </div>
-            <div className="text-xs font-bold truncate max-w-[120px]">{node.name}</div>
-            <Badge
-                variant={isRoot ? 'secondary' : 'outline'}
-                className={`mt-1 text-[10px] uppercase px-1 py-0 pointer-events-none ${isRoot ? 'bg-white/20 border-white/30 text-white' : ''}`}
-            >
-                {node.type}
-            </Badge>
 
+            {/* Name */}
+            <div className={`text-xs font-semibold truncate max-w-[100px] text-center leading-tight ${isRoot ? 'text-primary-foreground' : 'text-foreground'}`}>
+                {node.name}
+            </div>
+
+            {/* Type badge */}
+            <div className={`mt-1.5 text-[9px] uppercase font-bold tracking-wider px-1.5 py-0.5 rounded-full ${isRoot ? 'bg-white/20 text-primary-foreground' : colors.badge}`}>
+                {node.type.replace(/s$/, '')}
+            </div>
+
+            {/* Namespace chip */}
+            {node.namespace && !isRoot && (
+                <div className="mt-1 text-[8px] text-muted-foreground/60 font-mono truncate max-w-[100px]">
+                    {node.namespace}
+                </div>
+            )}
+
+            {/* External link / View Details */}
             {!isRoot && (
                 <Link
                     to={withSubPath(path)}
-                    className="absolute -top-1 -right-1 opacity-0 group-hover:opacity-100 transition-opacity bg-blue-500 text-white rounded-full p-1 shadow-sm"
+                    className="absolute -top-3 -right-3 opacity-0 group-hover:opacity-100 transition-all duration-200 bg-primary/90 hover:bg-primary text-primary-foreground rounded-full p-1.5 shadow-md hover:scale-110 z-50 flex items-center justify-center"
                     onClick={(e) => e.stopPropagation()}
+                    title={`View ${node.type} details`}
                 >
-                    <IconExternalLink size={10} />
+                    <IconExternalLink size={12} strokeWidth={2.5} />
                 </Link>
             )}
         </div>
@@ -335,7 +418,7 @@ function TopologyNode({ id, node, isRoot }: { id: string, node: NodeType; isRoot
 
 function TopologyLines({ links, positions }: { links: TopologyLink[], positions: Record<string, Position> }) {
     const connections = useMemo(() => {
-        const lines: { x1: number, y1: number, x2: number, y2: number, label?: string }[] = []
+        const lines: { x1: number, y1: number, x2: number, y2: number, label?: string, isCurved: boolean }[] = []
 
         links.forEach(link => {
             const pos1 = positions[link.source]
@@ -347,7 +430,8 @@ function TopologyLines({ links, positions }: { links: TopologyLink[], positions:
                     y1: pos1.y,
                     x2: pos2.x,
                     y2: pos2.y,
-                    label: link.label
+                    label: link.label,
+                    isCurved: Math.abs(pos1.x - pos2.x) > 50,
                 })
             }
         })
@@ -359,38 +443,56 @@ function TopologyLines({ links, positions }: { links: TopologyLink[], positions:
             <defs>
                 <marker
                     id="arrowhead"
-                    markerWidth="10"
-                    markerHeight="7"
-                    refX="9"
-                    refY="3.5"
+                    markerWidth="8"
+                    markerHeight="6"
+                    refX="7"
+                    refY="3"
                     orient="auto"
                 >
-                    <polygon points="0 0, 10 3.5, 0 7" fill="currentColor" opacity="0.4" />
+                    <polygon points="0 0, 8 3, 0 6" className="fill-blue-500/40" />
+                </marker>
+                <marker
+                    id="arrowhead-highlight"
+                    markerWidth="8"
+                    markerHeight="6"
+                    refX="7"
+                    refY="3"
+                    orient="auto"
+                >
+                    <polygon points="0 0, 8 3, 0 6" className="fill-blue-500" />
                 </marker>
             </defs>
-            {connections.map((line, idx) => (
-                <g key={idx}>
-                    <path
-                        d={`M ${line.x1} ${line.y1} L ${line.x2} ${line.y2}`}
-                        stroke="currentColor"
-                        strokeWidth="1.5"
-                        fill="none"
-                        className="text-blue-500/30"
-                        markerEnd="url(#arrowhead)"
-                    />
-                    {line.label && (
-                        <text
-                            x={(line.x1 + line.x2) / 2}
-                            y={(line.y1 + line.y2) / 2}
-                            textAnchor="middle"
-                            dy="-5"
-                            className="text-[8px] fill-muted-foreground opacity-60 font-medium pointer-events-none"
-                        >
-                            {line.label}
-                        </text>
-                    )}
-                </g>
-            ))}
+            {connections.map((line, idx) => {
+                const mx = (line.x1 + line.x2) / 2
+                const my = (line.y1 + line.y2) / 2
+                const pathD = line.isCurved
+                    ? `M ${line.x1} ${line.y1} Q ${mx} ${line.y1} ${line.x2} ${line.y2}`
+                    : `M ${line.x1} ${line.y1} L ${line.x2} ${line.y2}`
+
+                return (
+                    <g key={idx}>
+                        <path
+                            d={pathD}
+                            stroke="currentColor"
+                            strokeWidth="1.5"
+                            fill="none"
+                            className="text-blue-500/25"
+                            markerEnd="url(#arrowhead)"
+                            strokeDasharray="none"
+                        />
+                        {line.label && (
+                            <text
+                                x={mx}
+                                y={my - 4}
+                                textAnchor="middle"
+                                className="text-[8px] fill-muted-foreground/50 font-medium pointer-events-none"
+                            >
+                                {line.label}
+                            </text>
+                        )}
+                    </g>
+                )
+            })}
         </svg>
     )
 }

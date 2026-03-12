@@ -10,6 +10,8 @@ import (
 	"github.com/zxh326/kite/pkg/cluster"
 	"github.com/zxh326/kite/pkg/common"
 	"github.com/zxh326/kite/pkg/kube"
+	"github.com/zxh326/kite/pkg/model"
+	"github.com/zxh326/kite/pkg/rbac"
 	appsv1 "k8s.io/api/apps/v1"
 	autoscalingv2 "k8s.io/api/autoscaling/v2"
 	corev1 "k8s.io/api/core/v1"
@@ -263,6 +265,7 @@ func GetRelatedResources(c *gin.Context) {
 	namespace := c.Param("namespace")
 	name := c.Param("name")
 	resourceType := c.GetString("resource")
+	user := c.MustGet("user").(model.User)
 
 	resource, err := GetResource(c, resourceType, namespace, name)
 	if err != nil {
@@ -282,6 +285,10 @@ func GetRelatedResources(c *gin.Context) {
 	rootKey := fmt.Sprintf("%s:%s:%s", resourceType, namespace, name)
 
 	addNode := func(nodeType, nodeNamespace, nodeName string) string {
+		// Filter by RBAC
+		if !rbac.CanAccess(user, nodeType, "get", cs.Name, nodeNamespace) {
+			return ""
+		}
 		key := fmt.Sprintf("%s:%s:%s", nodeType, nodeNamespace, nodeName)
 		for _, n := range response.Nodes {
 			if n.Type == nodeType && n.Namespace == nodeNamespace && n.Name == nodeName {
@@ -297,6 +304,9 @@ func GetRelatedResources(c *gin.Context) {
 	}
 
 	addLink := func(source, target, label string) {
+		if source == "" || target == "" {
+			return
+		}
 		response.Links = append(response.Links, common.TopologyLink{
 			Source: source,
 			Target: target,
@@ -390,13 +400,66 @@ func GetRelatedResources(c *gin.Context) {
 		}
 
 	case *corev1.Node:
-		var podList corev1.PodList
-		if err := cs.K8sClient.List(ctx, &podList, &client.ListOptions{}); err == nil {
-			for _, pod := range podList.Items {
-				if pod.Spec.NodeName == res.Name {
-					podKey := addNode("pods", pod.Namespace, pod.Name)
-					addLink(rootKey, podKey, "hosts")
+		// Use field selector to efficiently list pods on this specific node
+		podList := corev1.PodList{}
+		if err := cs.K8sClient.List(ctx, &podList, &client.MatchingFields{"spec.nodeName": res.Name}); err != nil {
+			// Fallback if field indexer not set up - list all and filter
+			allPods := corev1.PodList{}
+			if listErr := cs.K8sClient.List(ctx, &allPods); listErr == nil {
+				for _, pod := range allPods.Items {
+					if pod.Spec.NodeName == res.Name {
+						podKey := addNode("pods", pod.Namespace, pod.Name)
+						addLink(rootKey, podKey, "hosts")
+					}
 				}
+			}
+		} else {
+			for _, pod := range podList.Items {
+				podKey := addNode("pods", pod.Namespace, pod.Name)
+				addLink(rootKey, podKey, "hosts")
+			}
+		}
+
+	case *corev1.Namespace:
+		nsName := res.Name
+		// Discover Deployments in namespace
+		var deploymentList appsv1.DeploymentList
+		if err := cs.K8sClient.List(ctx, &deploymentList, &client.ListOptions{Namespace: nsName}); err == nil {
+			for _, dep := range deploymentList.Items {
+				depKey := addNode("deployments", dep.Namespace, dep.Name)
+				addLink(rootKey, depKey, "contains")
+			}
+		}
+		// Discover StatefulSets
+		var statefulSetList appsv1.StatefulSetList
+		if err := cs.K8sClient.List(ctx, &statefulSetList, &client.ListOptions{Namespace: nsName}); err == nil {
+			for _, ss := range statefulSetList.Items {
+				ssKey := addNode("statefulsets", ss.Namespace, ss.Name)
+				addLink(rootKey, ssKey, "contains")
+			}
+		}
+		// Discover DaemonSets
+		var daemonSetList appsv1.DaemonSetList
+		if err := cs.K8sClient.List(ctx, &daemonSetList, &client.ListOptions{Namespace: nsName}); err == nil {
+			for _, ds := range daemonSetList.Items {
+				dsKey := addNode("daemonsets", ds.Namespace, ds.Name)
+				addLink(rootKey, dsKey, "contains")
+			}
+		}
+		// Discover Services
+		var serviceList corev1.ServiceList
+		if err := cs.K8sClient.List(ctx, &serviceList, &client.ListOptions{Namespace: nsName}); err == nil {
+			for _, svc := range serviceList.Items {
+				svcKey := addNode("services", svc.Namespace, svc.Name)
+				addLink(rootKey, svcKey, "exposes")
+			}
+		}
+		// Discover Ingresses
+		var ingressList v1.IngressList
+		if err := cs.K8sClient.List(ctx, &ingressList, &client.ListOptions{Namespace: nsName}); err == nil {
+			for _, ing := range ingressList.Items {
+				ingKey := addNode("ingresses", ing.Namespace, ing.Name)
+				addLink(rootKey, ingKey, "exposes")
 			}
 		}
 	}

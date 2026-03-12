@@ -4,6 +4,9 @@ import { createColumnHelper } from '@tanstack/react-table'
 import { DaemonSet } from 'kubernetes-types/apps/v1'
 import { useTranslation } from 'react-i18next'
 import { Link } from 'react-router-dom'
+import { toast } from 'sonner'
+
+import * as api from '@/lib/api'
 
 import { formatDate } from '@/lib/utils'
 import { Badge } from '@/components/ui/badge'
@@ -11,6 +14,29 @@ import { ResourceTable } from '@/components/resource-table'
 
 export function DaemonSetListPage() {
   const { t } = useTranslation()
+
+  const handleBatchRestart = useCallback(async (rows: DaemonSet[]) => {
+    const promises = rows.map((row) => {
+      const name = row.metadata?.name
+      const namespace = row.metadata?.namespace
+      if (!name || !namespace) return Promise.resolve()
+
+      return api.restartResource('daemonsets', name, namespace)
+        .then(() => toast.success(t('deployments.restartSuccess', { name, defaultValue: `Successfully restarted ${name}` })))
+        .catch((error) => {
+          console.error(`Failed to restart ${name}:`, error)
+          toast.error(t('deployments.restartFailed', { name, error: error.message, defaultValue: `Failed to restart ${name}: ${error.message}` }))
+          throw error
+        })
+    })
+
+    try {
+      await Promise.allSettled(promises)
+    } catch (e) {
+      // Errors handled individually
+    }
+  }, [t])
+
   // Define column helper outside of any hooks
   const columnHelper = createColumnHelper<DaemonSet>()
 
@@ -22,9 +48,8 @@ export function DaemonSetListPage() {
         cell: ({ row }) => (
           <div className="font-medium text-blue-500 hover:underline">
             <Link
-              to={`/daemonsets/${row.original.metadata!.namespace}/${
-                row.original.metadata!.name
-              }`}
+              to={`/daemonsets/${row.original.metadata!.namespace}/${row.original.metadata!.name
+                }`}
             >
               {row.original.metadata!.name}
             </Link>
@@ -109,6 +134,8 @@ export function DaemonSetListPage() {
       resourceName={'DaemonSets'}
       columns={columns}
       searchQueryFilter={daemonSetSearchFilter}
+      onBatchRestart={handleBatchRestart}
+      enableLabelFilter={true}
     />
   )
 }

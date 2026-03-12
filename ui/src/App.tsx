@@ -2,7 +2,7 @@ import './App.css'
 
 import { useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Outlet, useSearchParams } from 'react-router-dom'
+import { Outlet, useNavigate, useSearchParams } from 'react-router-dom'
 
 import { AppSidebar } from './components/app-sidebar'
 import { GlobalSearch } from './components/global-search'
@@ -56,6 +56,20 @@ function AppContent() {
   const [searchParams] = useSearchParams()
   const isIframe = searchParams.get('iframe') === 'true'
 
+  const navigate = useNavigate()
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (((e.metaKey || e.ctrlKey) && e.altKey && e.key === 's') ||
+        ((e.metaKey || e.ctrlKey) && e.key === ',')) {
+        e.preventDefault()
+        navigate('/settings')
+      }
+    }
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [navigate])
+
   if (isIframe) {
     return <Outlet />
   }
@@ -66,7 +80,7 @@ function AppContent() {
         <AppSidebar variant="inset" />
         <SidebarInset className="h-screen overflow-y-auto scrollbar-hide">
           <SiteHeader />
-          <div className="@container/main">
+          <div className="@container/main animate-in fade-in duration-300">
             <div className="flex flex-col gap-4 py-4 md:gap-6">
               <div className="px-4 lg:px-6">
                 <Outlet />

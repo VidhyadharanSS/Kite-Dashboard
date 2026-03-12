@@ -1,4 +1,7 @@
 import { useEffect, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
+import { useNamespaceContext } from '@/hooks/use-namespace-context'
+
 import {
   IconCircleCheckFilled,
   IconExclamationCircle,
@@ -53,6 +56,10 @@ export function StatefulSetDetail(props: { namespace: string; name: string }) {
   const { namespace, name } = props
   const [yamlContent, setYamlContent] = useState('')
   const [isSavingYaml, setIsSavingYaml] = useState(false)
+  const [isYamlDirty, setIsYamlDirty] = useState(false)
+  const navigate = useNavigate()
+  const { setActiveNamespace } = useNamespaceContext()
+
   const [isRestartPopoverOpen, setIsRestartPopoverOpen] = useState(false)
   const [isScalePopoverOpen, setIsScalePopoverOpen] = useState(false)
   const [scaleReplicas, setScaleReplicas] = useState(0)
@@ -89,10 +96,12 @@ export function StatefulSetDetail(props: { namespace: string; name: string }) {
 
   useEffect(() => {
     if (statefulset) {
-      setYamlContent(yaml.dump(statefulset, { indent: 2 }))
+      if (!isYamlDirty) {
+        setYamlContent(yaml.dump(statefulset, { indent: 2 }))
+      }
       setScaleReplicas(statefulset.spec?.replicas || 0)
     }
-  }, [statefulset])
+  }, [statefulset, isYamlDirty])
 
   // Auto-reset refresh interval when statefulset reaches stable state
   useEffect(() => {
@@ -128,6 +137,7 @@ export function StatefulSetDetail(props: { namespace: string; name: string }) {
       const parsedYaml = yaml.load(yamlContent) as StatefulSet
       await updateResource('statefulsets', name, namespace, parsedYaml)
       toast.success('StatefulSet YAML saved successfully')
+      setIsYamlDirty(false)
       setRefreshInterval(1000)
     } catch (error) {
       console.error('Failed to save YAML:', error)
@@ -139,6 +149,7 @@ export function StatefulSetDetail(props: { namespace: string; name: string }) {
 
   const handleYamlChange = (content: string) => {
     setYamlContent(content)
+    setIsYamlDirty(true)
   }
 
   const handleScale = async () => {
@@ -262,7 +273,16 @@ export function StatefulSetDetail(props: { namespace: string; name: string }) {
         <div>
           <h1 className="text-lg font-bold">{metadata?.name}</h1>
           <p className="text-muted-foreground">
-            Namespace: <span className="font-medium">{namespace}</span>
+            Namespace:{' '}
+            <button
+              onClick={() => {
+                setActiveNamespace(namespace)
+                navigate(`/pods?namespace=${namespace}`)
+              }}
+              className="font-medium text-primary hover:underline"
+            >
+              {namespace}
+            </button>
           </p>
         </div>
         <div className="flex gap-2">
@@ -498,14 +518,19 @@ export function StatefulSetDetail(props: { namespace: string; name: string }) {
                     <CardContent>
                       <div className="space-y-4">
                         {spec.template.spec.initContainers.map(
-                          (container: Container) => (
+                          (container: Container, index: number) => (
                             <ContainerTable
                               key={container.name}
                               container={container}
+                              resourceType="statefulsets"
+                              resourceName={name}
+                              namespace={namespace}
+                              containerIndex={index}
+                              init
+                              onImageUpdateSuccess={refetchStatefulSet}
                               onContainerUpdate={(updatedContainer) =>
                                 handleContainerUpdate(updatedContainer, true)
                               }
-                              init
                             />
                           )
                         )}
@@ -523,10 +548,15 @@ export function StatefulSetDetail(props: { namespace: string; name: string }) {
                     <CardContent>
                       <div className="space-y-4">
                         {spec.template.spec.containers.map(
-                          (container: Container) => (
+                          (container: Container, index: number) => (
                             <ContainerTable
                               key={container.name}
                               container={container}
+                              resourceType="statefulsets"
+                              resourceName={name}
+                              namespace={namespace}
+                              containerIndex={index}
+                              onImageUpdateSuccess={refetchStatefulSet}
                               onContainerUpdate={handleContainerUpdate}
                             />
                           )
@@ -536,17 +566,6 @@ export function StatefulSetDetail(props: { namespace: string; name: string }) {
                   </Card>
                 )}
               </div>
-            ),
-          },
-          {
-            value: 'topology',
-            label: 'Topology',
-            content: (
-              <ResourceTopology
-                resource="statefulsets"
-                name={name}
-                namespace={namespace}
-              />
             ),
           },
           {
@@ -649,11 +668,18 @@ export function StatefulSetDetail(props: { namespace: string; name: string }) {
             value: 'Related',
             label: 'Related',
             content: (
-              <RelatedResourcesTable
-                resource={'statefulsets'}
-                name={name}
-                namespace={namespace}
-              />
+              <div className="space-y-6">
+                <ResourceTopology
+                  resource="statefulsets"
+                  name={name}
+                  namespace={namespace}
+                />
+                <RelatedResourcesTable
+                  resource={'statefulsets'}
+                  name={name}
+                  namespace={namespace}
+                />
+              </div>
             ),
           },
           {

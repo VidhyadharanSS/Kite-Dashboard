@@ -1,4 +1,7 @@
 import { useEffect, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
+import { useNamespaceContext } from '@/hooks/use-namespace-context'
+
 import {
   IconExternalLink,
   IconLoader,
@@ -37,6 +40,9 @@ export function ServiceDetail(props: { name: string; namespace?: string }) {
   const [isSavingYaml, setIsSavingYaml] = useState(false)
   const [refreshKey, setRefreshKey] = useState(0)
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
+  const navigate = useNavigate()
+  const { setActiveNamespace } = useNamespaceContext()
+
 
   const { t } = useTranslation()
 
@@ -111,7 +117,16 @@ export function ServiceDetail(props: { name: string; namespace?: string }) {
           <h1 className="text-lg font-bold">{name}</h1>
           {namespace && (
             <p className="text-muted-foreground">
-              Namespace: <span className="font-medium">{namespace}</span>
+              Namespace:{' '}
+              <button
+                onClick={() => {
+                  setActiveNamespace(namespace)
+                  navigate(`/pods?namespace=${namespace}`)
+                }}
+                className="font-medium text-primary hover:underline"
+              >
+                {namespace}
+              </button>
             </p>
           )}
         </div>

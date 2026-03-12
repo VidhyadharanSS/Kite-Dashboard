@@ -16,6 +16,7 @@ import {
   IconRocket,
   IconRoute,
   IconRouter,
+  IconSearch,
   IconServer,
   IconServer2,
   IconSettings,
@@ -30,6 +31,7 @@ import { useNavigate } from 'react-router-dom'
 import { globalSearch, SearchResult } from '@/lib/api'
 import { useCluster } from '@/hooks/use-cluster'
 import { useFavorites } from '@/hooks/use-favorites'
+import { usePermissions } from '@/hooks/use-permissions'
 import { Badge } from '@/components/ui/badge'
 import {
   Command,
@@ -100,6 +102,24 @@ interface ActionSearchItem {
   onSelect: () => void
 }
 
+const Highlight = ({ text, query }: { text: string; query: string }) => {
+  if (!query.trim()) return <>{text}</>
+  const parts = text.split(new RegExp(`(${query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi'))
+  return (
+    <>
+      {parts.map((part, i) =>
+        part.toLowerCase() === query.toLowerCase() ? (
+          <mark key={i} className="bg-primary/20 text-primary font-bold px-0 rounded">
+            {part}
+          </mark>
+        ) : (
+          part
+        )
+      )}
+    </>
+  )
+}
+
 interface GlobalSearchProps {
   open: boolean
   onOpenChange: (open: boolean) => void
@@ -122,6 +142,24 @@ export function GlobalSearch({ open, onOpenChange }: GlobalSearchProps) {
     isSwitching,
     isLoading: isClusterLoading,
   } = useCluster()
+  const { canAccess } = usePermissions()
+
+  // Helper to map URL to resource type
+  const getResourceFromUrl = useCallback((url: string) => {
+    const parts = url.split('?')[0].split('/')
+    let base = parts[1]
+    if (base === 'persistentvolumeclaims') return 'persistentvolumeclaims'
+    if (base === 'persistentvolumes') return 'persistentvolumes'
+    if (base === 'storageclasses') return 'storageclasses'
+    if (base === 'configmaps') return 'configmaps'
+    if (base === 'serviceaccounts') return 'serviceaccounts'
+    if (base === 'rolebindings') return 'rolebindings'
+    if (base === 'clusterroles') return 'clusterroles'
+    if (base === 'clusterrolebindings') return 'clusterrolebindings'
+    if (base === 'horizontalpodautoscalers') return 'horizontalpodautoscalers'
+    if (base === 'crds' && parts[2]) return 'crs'
+    return base || ''
+  }, [])
 
   // Simple theme toggle function
   const toggleTheme = useCallback(() => {
@@ -238,8 +276,13 @@ export function GlobalSearch({ open, onOpenChange }: GlobalSearchProps) {
         })
     })
 
-    return items
-  }, [config, getIconComponent, t, user])
+    return items.filter(item => {
+      if (item.url === '/' || item.url === '/tutorials') return true
+      if (item.url === '/settings' || item.url.startsWith('/settings?')) return user?.isAdmin()
+      const resource = getResourceFromUrl(item.url)
+      return canAccess(resource, 'list')
+    })
+  }, [config, getIconComponent, t, user, canAccess, getResourceFromUrl])
 
   const sidebarResults = useMemo(() => {
     const trimmedQuery = query.trim().toLowerCase()
@@ -248,13 +291,20 @@ export function GlobalSearch({ open, onOpenChange }: GlobalSearchProps) {
     }
 
     return sidebarItems
-      .filter((item) => item.searchText.includes(trimmedQuery))
-      .sort((a, b) => {
-        if (a.isPinned !== b.isPinned) {
-          return a.isPinned ? -1 : 1
-        }
-        return a.title.localeCompare(b.title)
+      .map(item => {
+        let score = 0
+        const titleLower = item.title.toLowerCase()
+        if (titleLower === trimmedQuery) score += 1000
+        else if (titleLower.startsWith(trimmedQuery)) score += 500
+        else if (titleLower.includes(trimmedQuery)) score += 200
+        else if (item.searchText.includes(trimmedQuery)) score += 100
+
+        if (item.isPinned) score += 50
+
+        return { ...item, score }
       })
+      .filter(item => item.score > 0)
+      .sort((a, b) => b.score - a.score || a.title.localeCompare(b.title))
   }, [query, sidebarItems])
 
   const actionItems: ActionSearchItem[] = useMemo(() => {
@@ -266,6 +316,48 @@ export function GlobalSearch({ open, onOpenChange }: GlobalSearchProps) {
         searchText: 'toggle theme switch mode light dark'.toLocaleLowerCase(),
         onSelect: toggleTheme,
       },
+      {
+        id: 'nav-pods-quick',
+        label: 'Go to Pods',
+        icon: IconBox,
+        searchText: 'go to pods navigation'.toLowerCase(),
+        onSelect: () => handleSelect('/pods'),
+      },
+      {
+        id: 'nav-nodes-quick',
+        label: 'Go to Nodes',
+        icon: IconServer2,
+        searchText: 'go to nodes navigation'.toLowerCase(),
+        onSelect: () => handleSelect('/nodes'),
+      },
+      {
+        id: 'nav-deployments-quick',
+        label: 'Go to Deployments',
+        icon: IconRocket,
+        searchText: 'go to deployments navigation'.toLowerCase(),
+        onSelect: () => handleSelect('/deployments'),
+      },
+      {
+        id: 'nav-tutorial',
+        label: 'Developer Manual / Tutorials',
+        icon: IconMap,
+        searchText: 'docs help manual tutorial developer'.toLowerCase(),
+        onSelect: () => handleSelect('/tutorials'),
+      },
+      {
+        id: 'nav-advanced-search',
+        label: 'Advanced Search (Expression Query)',
+        icon: IconSearch,
+        searchText: 'advanced search expression query filter kubernetes resources'.toLowerCase(),
+        onSelect: () => handleSelect('/expression-search'),
+      },
+      {
+        id: 'nav-settings-quick',
+        label: 'Open Settings',
+        icon: IconSettings,
+        searchText: 'settings preferences admin'.toLowerCase(),
+        onSelect: () => handleSelect('/settings'),
+      },
       ...(clusters.length > 1
         ? clusters
           .filter((cluster) => cluster.name !== currentCluster)
@@ -273,7 +365,7 @@ export function GlobalSearch({ open, onOpenChange }: GlobalSearchProps) {
             id: `switch-cluster-${cluster.name}`,
             label: t('globalSearch.switchCluster', { name: cluster.name }),
             icon: IconServer,
-            searchText: `cluster ${cluster.name}`.toLocaleLowerCase(),
+            searchText: `switch cluster ${cluster.name}`.toLocaleLowerCase(),
             onSelect: () => {
               if (
                 isSwitching ||
@@ -286,7 +378,14 @@ export function GlobalSearch({ open, onOpenChange }: GlobalSearchProps) {
             },
           }))
         : []),
-    ]
+    ].filter(item => {
+      if (item.id === 'toggle-theme' || item.id === 'nav-tutorial' || item.id.startsWith('switch-cluster-')) return true
+      if (item.id === 'nav-settings-quick') return user?.isAdmin()
+      if (item.id === 'nav-pods-quick') return canAccess('pods', 'list')
+      if (item.id === 'nav-nodes-quick') return canAccess('nodes', 'list')
+      if (item.id === 'nav-deployments-quick') return canAccess('deployments', 'list')
+      return true
+    })
   }, [
     actualTheme,
     clusters,
@@ -296,6 +395,8 @@ export function GlobalSearch({ open, onOpenChange }: GlobalSearchProps) {
     setCurrentCluster,
     t,
     toggleTheme,
+    user,
+    canAccess
   ])
 
   // Filter theme option based on query
@@ -305,7 +406,19 @@ export function GlobalSearch({ open, onOpenChange }: GlobalSearchProps) {
       return []
     }
 
-    return actionItems.filter((item) => item.searchText.includes(trimmedQuery))
+    return actionItems
+      .map(item => {
+        let score = 0
+        const labelLower = item.label.toLowerCase()
+        if (labelLower === trimmedQuery) score += 1000
+        else if (labelLower.startsWith(trimmedQuery)) score += 500
+        else if (labelLower.includes(trimmedQuery)) score += 200
+        else if (item.searchText.includes(trimmedQuery)) score += 100
+
+        return { ...item, score }
+      })
+      .filter(item => item.score > 0)
+      .sort((a, b) => b.score - a.score || a.label.localeCompare(b.label))
   }, [actionItems, query])
 
   // Use favorites hook
@@ -417,11 +530,11 @@ export function GlobalSearch({ open, onOpenChange }: GlobalSearchProps) {
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogHeader className="sr-only">
-        <DialogTitle>{t('globalSearch.title')}</DialogTitle>
-        <DialogDescription>{t('globalSearch.description')}</DialogDescription>
-      </DialogHeader>
-      <DialogContent className="overflow-hidden p-0">
+      <DialogContent className="overflow-hidden p-0 max-w-7xl h-[70vh] flex flex-col">
+        <DialogHeader className="sr-only">
+          <DialogTitle>{t('globalSearch.title')}</DialogTitle>
+          <DialogDescription>{t('globalSearch.description')}</DialogDescription>
+        </DialogHeader>
         <Command shouldFilter={false}>
           <div className="flex items-center gap-2 border-b px-3">
             <CommandInput
@@ -431,17 +544,25 @@ export function GlobalSearch({ open, onOpenChange }: GlobalSearchProps) {
               className="border-0 focus:ring-0 flex-1"
             />
             {availableNamespaces.length > 0 && (
-              <select
-                value={namespaceFilter}
-                onChange={(e) => setNamespaceFilter(e.target.value)}
-                className="text-sm border rounded px-2 py-1 bg-background"
-              >
-                <option value="">All Namespaces</option>
-                {availableNamespaces.map(ns => (
-                  <option key={ns} value={ns}>{ns}</option>
-                ))}
-              </select>
+              <div className="flex items-center gap-1 border-l pl-3 py-1">
+                <span className="text-[10px] uppercase font-bold text-muted-foreground whitespace-nowrap">Filter:</span>
+                <select
+                  value={namespaceFilter}
+                  onChange={(e) => setNamespaceFilter(e.target.value)}
+                  className="text-xs border-none bg-transparent focus:ring-0 cursor-pointer font-medium"
+                >
+                  <option value="">All Namespaces</option>
+                  {availableNamespaces.map(ns => (
+                    <option key={ns} value={ns}>{ns}</option>
+                  ))}
+                </select>
+              </div>
             )}
+            <div className="flex items-center gap-1.5 border-l pl-3">
+              <kbd className="pointer-events-none hidden h-5 select-none items-center gap-1 rounded border bg-muted px-1.5 font-mono text-[10px] font-medium opacity-100 sm:flex">
+                <span className="text-xs">↵</span>
+              </kbd>
+            </div>
           </div>
           <CommandList>
             <CommandEmpty>
@@ -471,7 +592,9 @@ export function GlobalSearch({ open, onOpenChange }: GlobalSearchProps) {
                       <Icon className="h-4 w-4 text-sidebar-primary" />
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2">
-                          <span className="font-medium">{item.title}</span>
+                          <span className="font-medium">
+                            <Highlight text={item.title} query={query} />
+                          </span>
                           {item.groupLabel ? (
                             <Badge className="text-xs" variant="outline">
                               {item.groupLabel}
@@ -534,102 +657,106 @@ export function GlobalSearch({ open, onOpenChange }: GlobalSearchProps) {
                     : t('globalSearch.resources')
                 }
               >
-                {results.map((result) => {
-                  const config = RESOURCE_CONFIG[result.resourceType] || {
-                    label: result.resourceType,
-                    icon: IconBox, // Default icon if not found
-                  }
-                  const Icon = config.icon
-                  const isFav = isFavorite(result.id)
-                  const path = result.namespace
-                    ? `/${result.resourceType}/${result.namespace}/${result.name}`
-                    : `/${result.resourceType}/${result.name}`
-                  const isPod = result.resourceType === 'pods'
-                  return (
-                    <CommandItem
-                      key={result.id}
-                      value={`${result.name} ${result.namespace || ''} ${result.resourceType} ${RESOURCE_CONFIG[result.resourceType]?.label ||
-                        result.resourceType
-                        }`}
-                      onSelect={() => handleSelect(path)}
-                      className="flex items-center gap-3 py-3"
-                    >
-                      <Icon className="h-4 w-4 text-sidebar-primary" />
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2">
-                          <span className="font-medium">{result.name}</span>
-                          <Badge className="text-xs">
-                            {RESOURCE_CONFIG[result.resourceType]?.label
-                              ? t(
-                                RESOURCE_CONFIG[result.resourceType]
-                                  .label as string
-                              )
-                              : result.resourceType}
-                          </Badge>
-                        </div>
-                        {result.namespace && (
-                          <div className="text-xs text-muted-foreground mt-1">
-                            Namespace: {result.namespace}
+                {results
+                  .filter(result => canAccess(result.resourceType as any, 'get', result.namespace))
+                  .map((result) => {
+                    const config = RESOURCE_CONFIG[result.resourceType] || {
+                      label: result.resourceType,
+                      icon: IconBox, // Default icon if not found
+                    }
+                    const Icon = config.icon
+                    const isFav = isFavorite(result.id)
+                    const path = result.namespace
+                      ? `/${result.resourceType}/${result.namespace}/${result.name}`
+                      : `/${result.resourceType}/${result.name}`
+                    const isPod = result.resourceType === 'pods'
+                    const canExec = result.resourceType === 'pods' && canAccess('pods', 'exec', result.namespace)
+                    const canLogs = result.resourceType === 'pods' && canAccess('pods', 'get', result.namespace)
+                    return (
+                      <CommandItem
+                        key={result.id}
+                        value={`${result.name} ${result.namespace || ''} ${result.resourceType} ${RESOURCE_CONFIG[result.resourceType]?.label ||
+                          result.resourceType
+                          }`}
+                        onSelect={() => handleSelect(path)}
+                        className="flex items-center gap-3 py-3"
+                      >
+                        <Icon className="h-4 w-4 text-sidebar-primary" />
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 min-w-0">
+                            <span className="font-medium truncate">
+                              <Highlight text={result.name} query={query} />
+                            </span>
+                            <Badge className="text-xs">
+                              {RESOURCE_CONFIG[result.resourceType]?.label
+                                ? t(
+                                  RESOURCE_CONFIG[result.resourceType]
+                                    .label as string
+                                )
+                                : result.resourceType}
+                            </Badge>
                           </div>
-                        )}
-                      </div>
-                      <div className="flex items-center gap-1 mr-2">
-                        {isPod && (
-                          <>
-                            <button
-                              onClick={(e) => {
-                                e.preventDefault()
-                                e.stopPropagation()
-                                handlePodAction(result, 'terminal')
-                              }}
-                              className="px-2 py-1 text-xs bg-primary/10 hover:bg-primary/20 rounded transition-colors"
-                              title="Open Terminal"
-                            >
-                              Shell
-                            </button>
-                            <button
-                              onClick={(e) => {
-                                e.preventDefault()
-                                e.stopPropagation()
-                                handlePodAction(result, 'logs')
-                              }}
-                              className="px-2 py-1 text-xs bg-primary/10 hover:bg-primary/20 rounded transition-colors"
-                              title="View Logs"
-                            >
-                              Logs
-                            </button>
-                          </>
-                        )}
-                        <span onClick={(e) => {
-                          e.preventDefault()
-                          e.stopPropagation()
-                        }}>
+                          {result.namespace && (
+                            <div className="text-xs text-muted-foreground mt-1">
+                              Namespace: <Highlight text={result.namespace} query={query} />
+                            </div>
+                          )}
+                        </div>
+                        <div className="flex items-center gap-2 shrink-0">
+                          {isPod && (canExec || canLogs) && (
+                            <div className="flex items-center gap-1">
+                              {canExec && (
+                                <button
+                                  onClick={(e) => {
+                                    e.preventDefault()
+                                    e.stopPropagation()
+                                    handlePodAction(result, 'terminal')
+                                  }}
+                                  className="px-2 py-1 text-[10px] font-bold uppercase tracking-wider bg-primary/10 hover:bg-primary/20 text-primary rounded transition-colors"
+                                >
+                                  Shell
+                                </button>
+                              )}
+                              {canLogs && (
+                                <button
+                                  onClick={(e) => {
+                                    e.preventDefault()
+                                    e.stopPropagation()
+                                    handlePodAction(result, 'logs')
+                                  }}
+                                  className="px-2 py-1 text-[10px] font-bold uppercase tracking-wider bg-primary/10 hover:bg-primary/20 text-primary rounded transition-colors"
+                                >
+                                  Logs
+                                </button>
+                              )}
+                            </div>
+                          )}
                           <QuickYamlDialog
                             resourceType={result.resourceType as ResourceType}
                             name={result.name}
                             namespace={result.namespace}
                             triggerVariant="ghost"
-                            triggerSize="sm"
+                            triggerSize="icon"
+                            className="h-7 w-7 p-0"
                           />
-                        </span>
-                      </div>
-                      <button
-                        onClick={(e) => {
-                          e.preventDefault()
-                          e.stopPropagation()
-                          toggleFavorite(result, e)
-                        }}
-                        className="p-1 hover:bg-accent rounded transition-colors z-10 relative"
-                      >
-                        {isFav ? (
-                          <IconStarFilled className="h-3 w-3 text-yellow-500" />
-                        ) : (
-                          <IconStar className="h-3 w-3 text-muted-foreground opacity-50" />
-                        )}
-                      </button>
-                    </CommandItem>
-                  )
-                })}
+                        </div>
+                        <button
+                          onClick={(e) => {
+                            e.preventDefault()
+                            e.stopPropagation()
+                            toggleFavorite(result, e)
+                          }}
+                          className="p-1 hover:bg-accent rounded transition-colors z-10 relative"
+                        >
+                          {isFav ? (
+                            <IconStarFilled className="h-3 w-3 text-yellow-500" />
+                          ) : (
+                            <IconStar className="h-3 w-3 text-muted-foreground opacity-50" />
+                          )}
+                        </button>
+                      </CommandItem>
+                    )
+                  })}
               </CommandGroup>
             )}
           </CommandList>

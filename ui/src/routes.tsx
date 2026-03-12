@@ -12,6 +12,9 @@ import { Overview } from './pages/overview'
 import { ResourceDetail } from './pages/resource-detail'
 import { ResourceList } from './pages/resource-list'
 import { SettingsPage } from './pages/settings'
+import { ClusterEventsPage } from './pages/cluster-events-page'
+import { TutorialPage } from './pages/tutorial-page'
+import { ExpressionSearchPage } from './pages/expression-search-page'
 
 const subPath = getSubPath()
 
@@ -54,6 +57,18 @@ export const router = createBrowserRouter(
               <SettingsPage />
             </AdminRoute>
           ),
+        },
+        {
+          path: 'events',
+          element: <ClusterEventsPage />,
+        },
+        {
+          path: 'tutorials',
+          element: <TutorialPage />,
+        },
+        {
+          path: 'expression-search',
+          element: <ExpressionSearchPage />,
         },
         {
           path: 'crds/:crd',

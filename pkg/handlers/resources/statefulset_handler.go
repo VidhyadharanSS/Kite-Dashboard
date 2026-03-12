@@ -1,12 +1,15 @@
 package resources
 
 import (
+	"fmt"
 	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/zxh326/kite/pkg/cluster"
 	appsv1 "k8s.io/api/apps/v1"
 	"k8s.io/apimachinery/pkg/types"
+	"github.com/zxh326/kite/pkg/logger"
+	"github.com/zxh326/kite/pkg/model"
 )
 
 type StatefulSetHandler struct {
@@ -33,5 +36,17 @@ func (h *StatefulSetHandler) Restart(c *gin.Context, namespace, name string) err
 		statefulset.Spec.Template.Annotations = make(map[string]string)
 	}
 	statefulset.Spec.Template.Annotations["kite.kubernetes.io/restartedAt"] = time.Now().Format(time.RFC3339)
-	return cs.K8sClient.Update(c.Request.Context(), &statefulset)
+	
+	err := cs.K8sClient.Update(c.Request.Context(), &statefulset)
+	success := err == nil
+	errMsg := ""
+	if err != nil {
+		errMsg = err.Error()
+	}
+	h.recordHistory(c, "restart", &statefulset, &statefulset, success, errMsg)
+	if success {
+		user := c.MustGet("user").(model.User)
+		logger.Audit(user.Key(), "Restart", "statefulsets", namespace, cs.Name, fmt.Sprintf("Restarted statefulset %s", name))
+	}
+	return err
 }

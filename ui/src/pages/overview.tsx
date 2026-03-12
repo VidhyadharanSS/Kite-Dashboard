@@ -3,6 +3,7 @@ import { useAuth } from '@/contexts/auth-context'
 import { useTranslation } from 'react-i18next'
 
 import { useOverview, useResourceUsageHistory } from '@/lib/api'
+import { usePermissions } from '@/hooks/use-permissions'
 import NetworkUsageChart from '@/components/chart/network-usage-chart'
 import ResourceUtilizationChart from '@/components/chart/resource-utilization'
 import { ClusterStatsCards } from '@/components/cluster-stats-cards'
@@ -12,10 +13,13 @@ import { SettingsHint } from '@/components/settings-hint'
 import { LiveLogWidget } from '@/components/dashboard/live-log-widget'
 import { QuickActionsWidget } from '@/components/dashboard/quick-actions-widget'
 import { RecentDeploymentsWidget } from '@/components/dashboard/recent-deployments-widget'
+import { FailingPodsWidget } from '@/components/dashboard/failing-pods-widget'
+import { NamespaceHealthWidget } from '@/components/dashboard/namespace-health-widget'
 
 export function Overview() {
   const { t } = useTranslation()
   const { user } = useAuth()
+  const { canAccess } = usePermissions()
   const [isDismissed] = useState(() => {
     const dismissed = localStorage.getItem('settings-hint-dismissed')
     if (dismissed === 'true') {
@@ -48,8 +52,11 @@ export function Overview() {
 
   return (
     <div className="flex flex-col gap-6">
-      <div>
-        <h1 className="text-2xl font-bold">{t('overview.title')}</h1>
+      <div className="space-y-1">
+        <h1 className="text-3xl font-bold tracking-tight">{t('overview.title')}</h1>
+        <p className="text-muted-foreground text-sm font-medium italic opacity-80">
+          Navigate Kites cluster with ease!
+        </p>
       </div>
 
       <ClusterStatsCards stats={overview} isLoading={isLoading} />
@@ -60,7 +67,7 @@ export function Overview() {
 
       {/* Live Logs & Quick Actions - Admin tools first */}
       <div className="grid grid-cols-1 gap-4 @5xl/main:grid-cols-2">
-        {user?.isAdmin() && <LiveLogWidget />}
+        {canAccess('nodes', 'get') && <LiveLogWidget />}
         <QuickActionsWidget />
       </div>
 
@@ -75,8 +82,12 @@ export function Overview() {
         <RecentEvents />
       </div>
 
-      {/* Recent Deployments */}
-      <RecentDeploymentsWidget />
+      {/* Workload Status */}
+      <div className="grid grid-cols-1 gap-4 @5xl/main:grid-cols-3">
+        {canAccess('pods', 'list') && <FailingPodsWidget />}
+        {canAccess('deployments', 'list') && <RecentDeploymentsWidget />}
+        {canAccess('pods', 'list') && <NamespaceHealthWidget />}
+      </div>
 
       {/* CPU/Memory Charts if Prometheus enabled */}
       {overview?.prometheusEnabled && (

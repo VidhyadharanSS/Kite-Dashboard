@@ -94,24 +94,25 @@ $(BINARY_NAME): main.go pkg/**/*.go go.mod static
 	CGO_ENABLED=0 go build -trimpath $(LDFLAGS) -o $(BINARY_NAME) .
 
 # Production targets
-run: backend ## Run the built application
+run: backend ## Run the built application (accessible via machine IP)
 	@echo "🚀 Stopping existing server..."
 	-@fuser -k 8081/tcp 2>/dev/null || true
-	@echo "🚀 Starting $(BINARY_NAME) server..."
-	./$(BINARY_NAME)
+	@echo "🚀 Starting $(BINARY_NAME) server (binding to 0.0.0.0:8081)..."
+	HOST=0.0.0.0 ./$(BINARY_NAME)
 
-dev: ## Run in development mode
+dev: ## Run in development mode (accessible via machine IP)
 	@echo "🔄 Starting development mode..."
 	@echo "🚀 Stopping existing server..."
+	-@fuser -k 8080/tcp 2>/dev/null || true
 	-@fuser -k 8081/tcp 2>/dev/null || true
 	@echo "🚀 Starting $(BINARY_NAME) server..."
 	CGO_ENABLED=0 go build -trimpath $(LDFLAGS) -o $(BINARY_NAME) .
-	./$(BINARY_NAME) -v=5 & \
+	HOST=0.0.0.0 PORT=8080 ./$(BINARY_NAME) -v=5 & \
 	BACKEND_PID=$$!; \
 	echo "Backend PID: $$BACKEND_PID"; \
 	trap 'echo "🛑 Stopping backend server..."; kill $$BACKEND_PID 2>/dev/null; exit' INT TERM; \
 	echo "🔄 Starting development server..."; \
-	cd $(UI_DIR) && npm run dev; \
+	cd $(UI_DIR) && npm run dev -- --host 0.0.0.0 --port 8081; \
 	echo "🛑 Stopping backend server..."; \
 	kill $$BACKEND_PID 2>/dev/null
 

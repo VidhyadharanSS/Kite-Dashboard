@@ -4,6 +4,7 @@ import { formatDistanceToNow } from 'date-fns'
 import { useTranslation } from 'react-i18next'
 
 import { useResources } from '@/lib/api'
+import { usePermissions } from '@/hooks/use-permissions'
 import { Badge } from '@/components/ui/badge'
 import {
   Card,
@@ -15,21 +16,32 @@ import {
 
 export function RecentEvents() {
   const { t } = useTranslation()
+  const { canAccess } = usePermissions()
   const { data, isLoading } = useResources('events', undefined, {
     limit: 20,
+    disable: !canAccess('events', 'list'),
   })
 
   const events = useMemo(() => {
-    return data?.slice().sort((a, b) => {
-      const dateA = new Date(
-        a.metadata.creationTimestamp || a.firstTimestamp || ''
-      )
-      const dateB = new Date(
-        b.metadata.creationTimestamp || b.firstTimestamp || ''
-      )
-      return dateB.getTime() - dateA.getTime() // Sort by most recent first
-    })
-  }, [data])
+    return data
+      ?.filter((event) => {
+        // Filter events based on access to the involved object
+        const kind = (event.involvedObject?.kind || '').toLowerCase() + 's' // simple pluralization
+        const ns = event.involvedObject?.namespace || '*'
+        if (!event.involvedObject?.kind) return false
+        return canAccess(kind as any, 'get', ns)
+      })
+      .slice()
+      .sort((a, b) => {
+        const dateA = new Date(
+          a.metadata.creationTimestamp || a.firstTimestamp || ''
+        )
+        const dateB = new Date(
+          b.metadata.creationTimestamp || b.firstTimestamp || ''
+        )
+        return dateB.getTime() - dateA.getTime() // Sort by most recent first
+      })
+  }, [data, canAccess])
   const getEventIcon = (type: string) => {
     switch (type.toLowerCase()) {
       case 'warning':
@@ -143,8 +155,8 @@ export function RecentEvents() {
                       {formatDistanceToNow(
                         new Date(
                           event.metadata.creationTimestamp ||
-                            event.firstTimestamp ||
-                            ''
+                          event.firstTimestamp ||
+                          ''
                         ),
                         {
                           addSuffix: true,

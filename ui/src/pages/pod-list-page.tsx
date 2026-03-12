@@ -1,4 +1,4 @@
-import { useCallback, useMemo } from 'react'
+import { useCallback, useMemo, useState } from 'react'
 import { createColumnHelper } from '@tanstack/react-table'
 import { Pod } from 'kubernetes-types/core/v1'
 import { useTranslation } from 'react-i18next'
@@ -18,13 +18,17 @@ import { PodStatusIcon } from '@/components/pod-status-icon'
 import { DescribeDialog } from '@/components/describe-dialog'
 import { QuickYamlDialog } from '@/components/quick-yaml-dialog'
 import { ResourceTable } from '@/components/resource-table'
+import { NodeLabelSelector } from '@/components/selector/node-label-selector'
 
 export function PodListPage() {
   const { t } = useTranslation()
+  const [nodeNameFilter, setNodeNameFilter] = useState<string[] | null>(null)
+
   // Define column helper outside of any hooks
   const columnHelper = createColumnHelper<PodWithMetrics>()
 
-  // Define columns for the pod table - moved outside render cycle for better performance
+
+  // Define columns for the pod table
   const columns = useMemo(
     () => [
       columnHelper.accessor('metadata.name', {
@@ -32,8 +36,7 @@ export function PodListPage() {
         cell: ({ row }) => (
           <div className="font-medium text-blue-500 hover:underline">
             <Link
-              to={`/pods/${row.original.metadata!.namespace}/${row.original.metadata!.name
-                }`}
+              to={`/pods/${row.original.metadata?.namespace || ''}/${row.original.metadata?.name || ''}`}
             >
               {row.original.metadata!.name}
             </Link>
@@ -52,15 +55,16 @@ export function PodListPage() {
           )
         },
       }),
-      columnHelper.accessor((row) => row.status?.phase, {
+      columnHelper.accessor((row) => getPodStatus(row).reason, {
+        id: 'status',
         header: t('common.status'),
         enableColumnFilter: true,
         cell: ({ row }) => {
-          const status = getPodStatus(row.original)
+          const status = getPodStatus(row.original).reason
           return (
-            <Badge variant="outline" className="text-muted-foreground px-1.5">
-              <PodStatusIcon status={status.reason} />
-              {status.reason}
+            <Badge variant="outline" className="text-muted-foreground px-1.5 shrink-0">
+              <PodStatusIcon status={status} />
+              {status}
             </Badge>
           )
         },
@@ -141,7 +145,7 @@ export function PodListPage() {
         id: 'actions',
         header: t('common.actions'),
         cell: ({ row }) => (
-          <div className="flex items-center justify-end gap-2">
+          <div className="flex items-center justify-end gap-1">
             <QuickYamlDialog
               resourceType="pods"
               namespace={row.original.metadata?.namespace}
@@ -161,14 +165,26 @@ export function PodListPage() {
     [columnHelper, t]
   )
 
-  // Custom filter for pod search
-  const podSearchFilter = useCallback((pod: Pod, query: string) => {
-    return (
-      pod.metadata?.name?.toLowerCase().includes(query) ||
-      (pod.spec?.nodeName?.toLowerCase() || '').includes(query) ||
-      (pod.status?.podIP?.toLowerCase() || '').includes(query)
-    )
-  }, [])
+  // Custom filter for pod search & node label filter
+  const podSearchFilter = useCallback(
+    (pod: Pod, query: string) => {
+      // Apply node label filter first if present
+      if (nodeNameFilter && !nodeNameFilter.includes(pod.spec?.nodeName || '')) {
+        return false
+      }
+
+      return (
+        pod.metadata?.name?.toLowerCase().includes(query) ||
+        (pod.spec?.nodeName?.toLowerCase() || '').includes(query) ||
+        (pod.status?.podIP?.toLowerCase() || '').includes(query)
+      )
+    },
+    [nodeNameFilter]
+  )
+
+  const extraToolbars = [
+    <NodeLabelSelector onNodeNamesChange={setNodeNameFilter} />,
+  ]
 
   return (
     <ResourceTable<Pod>
@@ -176,6 +192,8 @@ export function PodListPage() {
       columns={columns}
       clusterScope={false}
       searchQueryFilter={podSearchFilter}
+      enableLabelFilter={true}
+      extraToolbars={extraToolbars}
     />
   )
 }

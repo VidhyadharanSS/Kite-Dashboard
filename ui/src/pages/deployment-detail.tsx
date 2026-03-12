@@ -1,4 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
+import { useNamespaceContext } from '@/hooks/use-namespace-context'
+import { useNavigate } from 'react-router-dom'
+
 import {
   IconLoader,
   IconRefresh,
@@ -46,6 +49,7 @@ import { RelatedResourcesTable } from '@/components/related-resource-table'
 import { ResourceDeleteConfirmationDialog } from '@/components/resource-delete-confirmation-dialog'
 import { ResourceTopology } from '@/components/resource-topology'
 import { ResourceHistoryTable } from '@/components/resource-history-table'
+import { RolloutMonitor } from '@/components/rollout-monitor'
 import { Terminal } from '@/components/terminal'
 import { VolumeTable } from '@/components/volume-table'
 import { YamlEditor } from '@/components/yaml-editor'
@@ -55,11 +59,16 @@ export function DeploymentDetail(props: { namespace: string; name: string }) {
   const [scaleReplicas, setScaleReplicas] = useState<number>(1)
   const [yamlContent, setYamlContent] = useState('')
   const [isSavingYaml, setIsSavingYaml] = useState(false)
+  const navigate = useNavigate()
+  const { setActiveNamespace } = useNamespaceContext()
+
+  const [isYamlDirty, setIsYamlDirty] = useState(false) // true = user has unsaved edits — do NOT overwrite from server
   const [isScalePopoverOpen, setIsScalePopoverOpen] = useState(false)
   const [isRestartPopoverOpen, setIsRestartPopoverOpen] = useState(false)
   const [refreshKey, setRefreshKey] = useState(0)
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
   const [refreshInterval, setRefreshInterval] = useState<number>(0)
+  const [isRolloutMonitorOpen, setIsRolloutMonitorOpen] = useState(false)
   const { t } = useTranslation()
 
   // Fetch deployment data
@@ -89,10 +98,15 @@ export function DeploymentDetail(props: { namespace: string; name: string }) {
 
   useEffect(() => {
     if (deployment) {
-      setYamlContent(yaml.dump(deployment, { indent: 2 }))
+      // Only sync YAML from server when the user hasn't made any local edits.
+      // During OOM/CrashLoop storms the deployment refetches every 15s;
+      // without this guard it would wipe out in-progress user changes.
+      if (!isYamlDirty) {
+        setYamlContent(yaml.dump(deployment, { indent: 2 }))
+      }
       setScaleReplicas(deployment.spec?.replicas || 1)
     }
-  }, [deployment])
+  }, [deployment, isYamlDirty])
 
   // Auto-reset refresh interval when deployment reaches stable state
   useEffect(() => {
@@ -106,10 +120,10 @@ export function DeploymentDetail(props: { namespace: string; name: string }) {
       if (isStable) {
         const timer = setTimeout(() => {
           setRefreshInterval(0)
-        }, 2000)
+        }, 15000) // Changed from 10s to 15s to reduce load
         return () => clearTimeout(timer)
       } else {
-        setRefreshInterval(1000)
+        setRefreshInterval(15000) // Changed from 10s to 15s to protect Master Node
       }
     }
   }, [deployment, refreshInterval])
@@ -126,7 +140,8 @@ export function DeploymentDetail(props: { namespace: string; name: string }) {
       await restartDeployment(namespace, name)
       toast.success('Deployment restart initiated')
       setIsRestartPopoverOpen(false)
-      setRefreshInterval(1000)
+      setRefreshInterval(15000)
+      setIsRolloutMonitorOpen(true)
     } catch (error) {
       console.error('Failed to restart deployment:', error)
       toast.error(translateError(error, t))
@@ -145,7 +160,8 @@ export function DeploymentDetail(props: { namespace: string; name: string }) {
       await patchResource('deployments', name, namespace, updatedDeployment)
       toast.success(`Deployment scaled to ${scaleReplicas} replicas`)
       setIsScalePopoverOpen(false)
-      setRefreshInterval(1000)
+      setRefreshInterval(15000)
+      setIsRolloutMonitorOpen(true)
     } catch (error) {
       console.error('Failed to restart deployment:', error)
       toast.error(translateError(error, t))
@@ -157,7 +173,9 @@ export function DeploymentDetail(props: { namespace: string; name: string }) {
     try {
       await updateResource('deployments', name, namespace, content)
       toast.success('YAML saved successfully')
-      setRefreshInterval(1000)
+      setIsYamlDirty(false)
+      setRefreshInterval(15000)
+      setIsRolloutMonitorOpen(true)
     } catch (error) {
       console.error('Failed to save YAML:', error)
       toast.error(translateError(error, t))
@@ -168,6 +186,7 @@ export function DeploymentDetail(props: { namespace: string; name: string }) {
 
   const handleYamlChange = (content: string) => {
     setYamlContent(content)
+    setIsYamlDirty(true) // user started editing — protect from background refetch resets
   }
 
   const handleContainerUpdate = async (
@@ -212,7 +231,7 @@ export function DeploymentDetail(props: { namespace: string; name: string }) {
       // Call the update API
       await updateResource('deployments', name, namespace, updatedDeployment)
       toast.success(`Container ${updatedContainer.name} updated successfully`)
-      setRefreshInterval(1000)
+      setRefreshInterval(15000) // Changed from 10s to 15s
     } catch (error) {
       console.error('Failed to update container:', error)
       toast.error(translateError(error, t))
@@ -255,7 +274,16 @@ export function DeploymentDetail(props: { namespace: string; name: string }) {
         <div>
           <h1 className="text-lg font-bold">{name}</h1>
           <p className="text-muted-foreground">
-            Namespace: <span className="font-medium">{namespace}</span>
+            Namespace:{' '}
+            <button
+              onClick={() => {
+                setActiveNamespace(namespace)
+                navigate(`/pods?namespace=${namespace}`)
+              }}
+              className="font-medium text-primary hover:underline"
+            >
+              {namespace}
+            </button>
           </p>
         </div>
         <div className="flex gap-2">
@@ -410,9 +438,24 @@ export function DeploymentDetail(props: { namespace: string; name: string }) {
                           <p className="text-xs text-muted-foreground">
                             Status
                           </p>
-                          <p className="text-sm font-medium">
-                            {getDeploymentStatus(deployment)}
-                          </p>
+                          <div className="flex flex-col">
+                            <p className="text-sm font-medium">
+                              {getDeploymentStatus(deployment)}
+                            </p>
+                            {(() => {
+                              const s = getDeploymentStatus(deployment);
+                              if (s === 'Progressing' && deployment.status?.conditions) {
+                                const progCond = deployment.status.conditions.find(c => c.type === 'Progressing');
+                                if (progCond && progCond.message) {
+                                  return <span className="text-xs text-muted-foreground break-words mt-1 max-w-[200px] leading-snug">{progCond.message}</span>
+                                }
+                                if (deployment.status.availableReplicas !== deployment.status.replicas) {
+                                  return <span className="text-xs text-muted-foreground mt-1 max-w-[200px] leading-snug">{deployment.status.availableReplicas || 0} / {deployment.status.replicas || 0} pods available</span>
+                                }
+                              }
+                              return null;
+                            })()}
+                          </div>
                         </div>
                       </div>
 
@@ -523,10 +566,16 @@ export function DeploymentDetail(props: { namespace: string; name: string }) {
                         <div className="space-y-6">
                           <div className="space-y-4">
                             {deployment.spec?.template?.spec?.initContainers?.map(
-                              (container) => (
+                              (container, index) => (
                                 <ContainerTable
                                   key={container.name}
                                   container={container}
+                                  resourceType="deployments"
+                                  resourceName={name}
+                                  namespace={namespace}
+                                  containerIndex={index}
+                                  init
+                                  onImageUpdateSuccess={refetchDeployment}
                                   onContainerUpdate={(updatedContainer) =>
                                     handleContainerUpdate(
                                       updatedContainer,
@@ -553,10 +602,15 @@ export function DeploymentDetail(props: { namespace: string; name: string }) {
                     <div className="space-y-6">
                       <div className="space-y-4">
                         {deployment.spec?.template?.spec?.containers?.map(
-                          (container) => (
+                          (container, index) => (
                             <ContainerTable
                               key={container.name}
                               container={container}
+                              resourceType="deployments"
+                              resourceName={name}
+                              namespace={namespace}
+                              containerIndex={index}
+                              onImageUpdateSuccess={refetchDeployment}
                               onContainerUpdate={(updatedContainer) =>
                                 handleContainerUpdate(updatedContainer)
                               }
@@ -608,17 +662,6 @@ export function DeploymentDetail(props: { namespace: string; name: string }) {
             ),
           },
           {
-            value: 'topology',
-            label: 'Topology',
-            content: (
-              <ResourceTopology
-                resource="deployments"
-                name={name}
-                namespace={namespace}
-              />
-            ),
-          },
-          {
             value: 'yaml',
             label: 'YAML',
             content: (
@@ -629,6 +672,7 @@ export function DeploymentDetail(props: { namespace: string; name: string }) {
                 onSave={handleSaveYaml}
                 onChange={handleYamlChange}
                 isSaving={isSavingYaml}
+                unsaved={isYamlDirty}
               />
             ),
           },
@@ -695,11 +739,18 @@ export function DeploymentDetail(props: { namespace: string; name: string }) {
             value: 'Related',
             label: 'Related',
             content: (
-              <RelatedResourcesTable
-                resource={'deployments'}
-                name={name}
-                namespace={namespace}
-              />
+              <div className="space-y-6">
+                <ResourceTopology
+                  resource="deployments"
+                  name={name}
+                  namespace={namespace}
+                />
+                <RelatedResourcesTable
+                  resource={'deployments'}
+                  name={name}
+                  namespace={namespace}
+                />
+              </div>
             ),
           },
           {
@@ -773,6 +824,13 @@ export function DeploymentDetail(props: { namespace: string; name: string }) {
         resourceName={name}
         resourceType="deployments"
         namespace={namespace}
+      />
+
+      <RolloutMonitor
+        deploymentName={name}
+        namespace={namespace}
+        open={isRolloutMonitorOpen}
+        onOpenChange={setIsRolloutMonitorOpen}
       />
     </div>
   )

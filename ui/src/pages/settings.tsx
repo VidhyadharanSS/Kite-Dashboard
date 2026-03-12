@@ -9,6 +9,8 @@ import { OAuthProviderManagement } from '@/components/settings/oauth-provider-ma
 import { RBACManagement } from '@/components/settings/rbac-management'
 import { TemplateManagement } from '@/components/settings/template-management'
 import { UserManagement } from '@/components/settings/user-management'
+import { SessionManagement } from '@/components/settings/session-management'
+
 
 export function SettingsPage() {
   const { t } = useTranslation()
@@ -57,6 +59,11 @@ export function SettingsPage() {
             value: 'templates',
             label: t('settings.tabs.templates', 'Templates'),
             content: <TemplateManagement />,
+          },
+          {
+            value: 'sessions',
+            label: t('settings.tabs.sessions', 'Sessions'),
+            content: <SessionManagement />,
           },
           {
             value: 'audit',

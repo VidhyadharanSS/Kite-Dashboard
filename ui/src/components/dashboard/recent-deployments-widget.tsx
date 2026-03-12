@@ -2,6 +2,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { IconRocket, IconLoader2 } from '@tabler/icons-react'
 import { useTranslation } from 'react-i18next'
 import { useResources } from '@/lib/api'
+import { usePermissions } from '@/hooks/use-permissions'
 import type { Deployment } from 'kubernetes-types/apps/v1'
 import { Badge } from '@/components/ui/badge'
 import { useNavigate } from 'react-router-dom'
@@ -10,8 +11,10 @@ import { formatDistanceToNow } from 'date-fns'
 export function RecentDeploymentsWidget() {
     const { t } = useTranslation()
     const navigate = useNavigate()
+    const { canAccess } = usePermissions()
     const { data: deployments, isLoading } = useResources('deployments', undefined, {
-        refreshInterval: 30000
+        refreshInterval: 30000,
+        disable: !canAccess('deployments', 'list')
     })
 
     const recentDeployments = deployments

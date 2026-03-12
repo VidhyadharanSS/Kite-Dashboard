@@ -10,8 +10,11 @@ import { SidebarTrigger } from '@/components/ui/sidebar'
 
 import { CreateResourceDialog } from './create-resource-dialog'
 import { DynamicBreadcrumb } from './dynamic-breadcrumb'
+import { GlobalAuditDrawer } from './global-audit-drawer'
 import { LanguageToggle } from './language-toggle'
+import { LiveEventDrawer } from './live-event-drawer'
 import { ModeToggle } from './mode-toggle'
+import { NamespaceQuickSwitch } from './namespace-quick-switch'
 import { Search } from './search'
 import { UserMenu } from './user-menu'
 
@@ -42,8 +45,19 @@ export function SiteHeader() {
             className="mx-2 data-[orientation=vertical]:h-4"
           />
           <DynamicBreadcrumb />
+
+          {/* Pinned namespace quick-switch pills */}
+          <NamespaceQuickSwitch />
+
           <div className="ml-auto flex items-center gap-2">
             <Search />
+
+            {/* Live cluster event drawer */}
+            <LiveEventDrawer />
+
+            {/* Global audit / activity feed */}
+            <GlobalAuditDrawer />
+
             <div className="relative group">
               <Plus
                 className="h-5 w-5 cursor-pointer text-muted-foreground hover:text-foreground"

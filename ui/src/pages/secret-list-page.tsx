@@ -19,9 +19,8 @@ export function SecretListPage() {
         cell: ({ row }) => (
           <div className="font-medium text-blue-500 hover:underline">
             <Link
-              to={`/secrets/${row.original.metadata!.namespace}/${
-                row.original.metadata!.name
-              }`}
+              to={`/secrets/${row.original.metadata!.namespace}/${row.original.metadata!.name
+                }`}
             >
               {row.original.metadata!.name}
             </Link>
@@ -30,6 +29,7 @@ export function SecretListPage() {
       }),
       columnHelper.accessor('type', {
         header: 'Type',
+        enableColumnFilter: true,
         cell: ({ getValue }) => {
           const type = getValue() || 'Opaque'
           return <Badge variant="outline">{type}</Badge>

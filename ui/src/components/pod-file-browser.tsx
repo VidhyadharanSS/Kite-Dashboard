@@ -16,7 +16,6 @@ import { toast } from 'sonner'
 
 import {
   podDownloadFile,
-  podPreviewFile,
   podUploadFile,
   usePodFiles,
 } from '@/lib/api'
@@ -33,6 +32,15 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
+
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from '@/components/ui/dialog'
+import { withSubPath } from '@/lib/subpath'
 
 import { ErrorMessage } from './error-message'
 import { ContainerSelector } from './selector/container-selector'
@@ -95,10 +103,10 @@ export function PodFileBrowser({
     podDownloadFile(namespace, podName, selectedContainer, filePath)
   }
 
-  const handlePreview = (fileName: string) => {
+  const getPreviewUrl = (fileName: string) => {
     const filePath =
       currentPath === '/' ? `/${fileName}` : `${currentPath}/${fileName}`
-    podPreviewFile(namespace, podName, selectedContainer, filePath)
+    return withSubPath(`/api/v1/namespaces/${namespace}/pods/${podName}/files/preview?container=${selectedContainer}&path=${encodeURIComponent(filePath)}`)
   }
 
   const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -181,9 +189,8 @@ export function PodFileBrowser({
           />
           <Label
             htmlFor="file-upload"
-            className={`inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 bg-primary text-primary-foreground hover:bg-primary/90 h-10 px-4 py-2 cursor-pointer ${
-              isUploading ? 'opacity-50 cursor-not-allowed' : ''
-            }`}
+            className={`inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 bg-primary text-primary-foreground hover:bg-primary/90 h-10 px-4 py-2 cursor-pointer ${isUploading ? 'opacity-50 cursor-not-allowed' : ''
+              }`}
           >
             {isUploading ? (
               <IconLoader className="w-4 h-4 animate-spin mr-2" />
@@ -275,15 +282,34 @@ export function PodFileBrowser({
                     <TableCell>
                       <div className="flex items-center gap-1">
                         {!file.isDir && (
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            title="Preview file"
-                            aria-label="Preview file"
-                            onClick={() => handlePreview(file.name)}
-                          >
-                            <IconEye className="w-4 h-4" />
-                          </Button>
+                          <Dialog>
+                            <DialogTrigger asChild>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                title="Preview file"
+                                aria-label="Preview file"
+                              >
+                                <IconEye className="w-4 h-4" />
+                              </Button>
+                            </DialogTrigger>
+                            <DialogContent className="!max-w-[95vw] w-[95vw] h-[90vh] flex flex-col gap-0 p-0 overflow-hidden">
+                              <DialogHeader className="px-4 py-3 border-b shrink-0">
+                                <DialogTitle className="flex items-center gap-2 text-sm">
+                                  <IconFile className="w-4 h-4 shrink-0" />
+                                  <span className="truncate font-mono">{currentPath === '/' ? '' : currentPath}/{file.name}</span>
+                                </DialogTitle>
+                              </DialogHeader>
+                              <div className="flex-1 overflow-hidden bg-background">
+                                <iframe
+                                  src={getPreviewUrl(file.name)}
+                                  className="w-full h-full border-0 block"
+                                  title={`Preview ${file.name}`}
+                                  style={{ minHeight: 0 }}
+                                />
+                              </div>
+                            </DialogContent>
+                          </Dialog>
                         )}
                         <Button
                           variant="ghost"

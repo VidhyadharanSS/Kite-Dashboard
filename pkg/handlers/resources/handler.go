@@ -97,14 +97,30 @@ func RegisterRoutes(group *gin.RouterGroup) {
 		}
 	}
 
-	// Register related resources route for supported resource types
-	supportedRelatedResourceTypes := []string{"pods", "deployments", "statefulsets", "daemonsets", "configmaps", "secrets", "persistentvolumeclaims", "httproutes", "horizontalpodautoscalers", "services", "ingresses", "nodes"}
+	// Register related resources route for namespace-scoped resource types
+	supportedRelatedResourceTypes := []string{"pods", "deployments", "statefulsets", "daemonsets", "configmaps", "secrets", "persistentvolumeclaims", "httproutes", "horizontalpodautoscalers", "services", "ingresses"}
 	for _, resourceType := range supportedRelatedResourceTypes {
 		if handler, exists := handlers[resourceType]; exists && !handler.IsClusterScoped() {
 			g := group.Group("/" + resourceType)
+			rt := resourceType // capture for closure
 			g.GET("/:namespace/:name/related", func(c *gin.Context) {
-				// Set the resource type in the context for GetRelatedResources
-				c.Set("resource", resourceType)
+				c.Set("resource", rt)
+				GetRelatedResources(c)
+			})
+		}
+	}
+
+	// Register related resources route for cluster-scoped resource types
+	// These use /_all as the namespace placeholder
+	clusterScopedRelated := []string{"nodes", "namespaces", "persistentvolumes", "storageclasses"}
+	for _, resourceType := range clusterScopedRelated {
+		if _, exists := handlers[resourceType]; exists {
+			g := group.Group("/" + resourceType)
+			rt := resourceType // capture for closure
+			g.GET("/_all/:name/related", func(c *gin.Context) {
+				c.Set("resource", rt)
+				// For cluster-scoped resources, namespace param is "_all"; clear it
+				c.Params = append(c.Params, gin.Param{Key: "namespace", Value: ""})
 				GetRelatedResources(c)
 			})
 		}

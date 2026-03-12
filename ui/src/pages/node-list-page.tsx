@@ -2,7 +2,7 @@ import { useCallback, useMemo, useState } from 'react'
 import { createColumnHelper } from '@tanstack/react-table'
 import { useTranslation } from 'react-i18next'
 import { Link } from 'react-router-dom'
-import { Filter, LayoutGrid } from 'lucide-react'
+import { LayoutGrid } from 'lucide-react'
 
 import { NodeWithMetrics } from '@/types/api'
 import { formatDate } from '@/lib/utils'
@@ -14,13 +14,6 @@ import { QuickYamlDialog } from '@/components/quick-yaml-dialog'
 import { ResourceTable } from '@/components/resource-table'
 import { Button } from '@/components/ui/button'
 import { ClusterHeatmap } from '@/components/cluster-heatmap'
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select'
 
 function getNodeStatus(node: NodeWithMetrics): string {
   const conditions = node.status?.conditions || []
@@ -124,27 +117,14 @@ function getNodeIP(node: NodeWithMetrics): string {
   return 'N/A'
 }
 
-const NODE_POOL_FILTERS = {
-  'NodePool-common (CRMIntelligencepy)': 'kites.zoho.com/nodepool-common',
-  'Nodepool-weaviate (For weaviate)': 'kites.zoho.com/nodepool-weaviate',
-}
-
-const CATEGORY_FILTERS = {
-  'Main': 'kites.zoho.com/nodepool-crmintelligencepy-default',
-  'Lab': 'kites.zoho.com/nodepool-crmintelligencepy-lab',
-  'Premium': 'kites.zoho.com/nodepool-crmintelligencepy-premium',
-}
-
-const SHARING_FILTERS = {
-  'LLM (unshared)': 'kites.zoho.com/gpu-unshared',
-  'non LLM (shared)': 'kites.zoho.com/gpu-shared',
-}
+import { FilterBar, FilterGroup } from '@/components/ui/filter-bar'
+import { NodeLabelSelector } from '@/components/selector/node-label-selector'
 
 export function NodeListPage() {
   const { t } = useTranslation()
-  const [nodePoolFilter, setNodePoolFilter] = useState<string>('all')
-  const [categoryFilter, setCategoryFilter] = useState<string>('all')
-  const [sharingFilter, setSharingFilter] = useState<string>('all')
+  const [selectedLabels, setSelectedLabels] = useState<string>('')
+  const [showHeatmap, setShowHeatmap] = useState(false)
+  const [statusFilter, setStatusFilter] = useState<'all' | 'ready' | 'notready' | 'unschedulable'>('all')
 
   // Define column helper outside of any hooks
   const columnHelper = createColumnHelper<NodeWithMetrics>()
@@ -155,7 +135,7 @@ export function NodeListPage() {
       columnHelper.accessor('metadata.name', {
         header: t('common.name'),
         cell: ({ row }) => (
-          <div className="font-medium text-blue-500 hover:underline">
+          <div className="font-medium text-blue-500 hover:underline text-sm">
             <Link to={`/nodes/${row.original.metadata!.name}`}>
               {row.original.metadata!.name}
             </Link>
@@ -168,7 +148,7 @@ export function NodeListPage() {
         cell: ({ getValue }) => {
           const status = getValue()
           return (
-            <Badge variant="outline" className="text-muted-foreground px-1.5">
+            <Badge variant="outline" className="text-muted-foreground px-1.5 text-[10px] font-bold uppercase tracking-tight">
               <NodeStatusIcon status={status} />
               {status}
             </Badge>
@@ -181,12 +161,12 @@ export function NodeListPage() {
         cell: ({ getValue }) => {
           const roles = getValue()
           return (
-            <div>
+            <div className="flex gap-1">
               {roles.map((role) => (
                 <Badge
                   key={role}
                   variant={role === 'control-plane' ? 'default' : 'secondary'}
-                  className="text-xs"
+                  className="text-[10px] h-4 px-1"
                 >
                   {role}
                 </Badge>
@@ -201,7 +181,7 @@ export function NodeListPage() {
         cell: ({ row }) => (
           <Link
             to={`/nodes/${row.original.metadata!.name}?tab=pods`}
-            className="text-muted-foreground hover:text-primary/80 hover:underline transition-colors cursor-pointer"
+            className="text-muted-foreground hover:text-primary/80 hover:underline transition-colors cursor-pointer text-xs font-mono"
           >
             {row.original.metrics?.pods || 0} /{' '}
             {row.original.metrics?.podsLimit || 0}
@@ -251,7 +231,7 @@ export function NodeListPage() {
         cell: ({ getValue }) => {
           const ip = getValue()
           return (
-            <span className="text-sm font-mono text-muted-foreground">
+            <span className="text-xs font-mono text-muted-foreground">
               {ip}
             </span>
           )
@@ -262,29 +242,7 @@ export function NodeListPage() {
         cell: ({ getValue }) => {
           const version = getValue()
           return version ? (
-            <span className="text-sm">{version}</span>
-          ) : (
-            <span className="text-muted-foreground">N/A</span>
-          )
-        },
-      }),
-      columnHelper.accessor('status.nodeInfo.kernelVersion', {
-        header: 'Kernel Version',
-        cell: ({ getValue }) => {
-          const kernelVersion = getValue()
-          return kernelVersion ? (
-            <span className="text-sm">{kernelVersion}</span>
-          ) : (
-            <span className="text-muted-foreground">N/A</span>
-          )
-        },
-      }),
-      columnHelper.accessor('status.nodeInfo.osImage', {
-        header: 'OS Image',
-        cell: ({ getValue }) => {
-          const osImage = getValue()
-          return osImage ? (
-            <span className="text-sm">{osImage}</span>
+            <span className="text-xs font-mono text-muted-foreground">{version}</span>
           ) : (
             <span className="text-muted-foreground">N/A</span>
           )
@@ -295,7 +253,7 @@ export function NodeListPage() {
         cell: ({ getValue }) => {
           const dateStr = formatDate(getValue() || '')
           return (
-            <span className="text-muted-foreground text-sm">{dateStr}</span>
+            <span className="text-muted-foreground text-xs">{dateStr}</span>
           )
         },
       }),
@@ -327,108 +285,90 @@ export function NodeListPage() {
       const lowerQuery = query.toLowerCase()
       const roles = getNodeRoles(node)
       const ip = getNodeIP(node)
+      const status = getNodeStatus(node)
+
+      let statusMatch = true
+      if (statusFilter === 'ready') statusMatch = status === 'Ready'
+      else if (statusFilter === 'notready') statusMatch = status === 'NotReady' || status.includes('Pressure') || status.includes('Unavailable')
+      else if (statusFilter === 'unschedulable') statusMatch = status.includes('Disabled')
+
+      if (!statusMatch) return false
+
+      if (!query) return true
+
       return (
         node.metadata!.name!.toLowerCase().includes(lowerQuery) ||
         (node.status?.nodeInfo?.kubeletVersion?.toLowerCase() || '').includes(
           lowerQuery
         ) ||
-        getNodeStatus(node).toLowerCase().includes(lowerQuery) ||
+        status.toLowerCase().includes(lowerQuery) ||
         roles.some((role) => role.toLowerCase().includes(lowerQuery)) ||
         ip.toLowerCase().includes(lowerQuery)
       )
     },
-    []
+    [statusFilter]
   )
 
-  // Label filter logic
-  const labelFilter = useMemo(() => {
-    const parts = []
-    if (nodePoolFilter !== 'all') {
-      parts.push(NODE_POOL_FILTERS[nodePoolFilter as keyof typeof NODE_POOL_FILTERS])
-    }
-    if (categoryFilter !== 'all') {
-      parts.push(CATEGORY_FILTERS[categoryFilter as keyof typeof CATEGORY_FILTERS])
-    }
-    if (sharingFilter !== 'all') {
-      parts.push(SHARING_FILTERS[sharingFilter as keyof typeof SHARING_FILTERS])
-    }
-    return parts.length > 0 ? parts.join(',') : undefined
-  }, [nodePoolFilter, categoryFilter, sharingFilter])
-
-  // Filter toolbar component
-  const [showHeatmap, setShowHeatmap] = useState(false)
-
   const filterToolbar = (
-    <div className="flex items-center gap-2">
-      <Button
-        variant={showHeatmap ? 'secondary' : 'outline'}
-        size="sm"
-        onClick={() => setShowHeatmap(!showHeatmap)}
-        className="gap-2"
-      >
-        <LayoutGrid className="h-4 w-4" />
-        {showHeatmap ? 'Hide Overview' : 'Show Overview'}
-      </Button>
-      <div className="w-px h-6 bg-border mx-1" />
-      <Filter className="h-4 w-4 text-muted-foreground mr-1" />
-      <Select
-        value={nodePoolFilter}
-        onValueChange={setNodePoolFilter}
-      >
-        <SelectTrigger className="w-[200px]">
-          <SelectValue placeholder="Node Pool" />
-        </SelectTrigger>
-        <SelectContent>
-          <SelectItem value="all">All Pools</SelectItem>
-          {Object.keys(NODE_POOL_FILTERS).map((key) => (
-            <SelectItem key={key} value={key}>
-              {key}
-            </SelectItem>
-          ))}
-        </SelectContent>
-      </Select>
-
-      <Select
-        value={categoryFilter}
-        onValueChange={setCategoryFilter}
-      >
-        <SelectTrigger className="w-[140px]">
-          <SelectValue placeholder="Setup" />
-        </SelectTrigger>
-        <SelectContent>
-          <SelectItem value="all">All Setup</SelectItem>
-          {Object.keys(CATEGORY_FILTERS).map((key) => (
-            <SelectItem key={key} value={key}>
-              {key}
-            </SelectItem>
-          ))}
-        </SelectContent>
-      </Select>
-
-      <Select
-        value={sharingFilter}
-        onValueChange={setSharingFilter}
-      >
-        <SelectTrigger className="w-[160px]">
-          <SelectValue placeholder="GPU Sharing" />
-        </SelectTrigger>
-        <SelectContent>
-          <SelectItem value="all">Any Mode</SelectItem>
-          {Object.keys(SHARING_FILTERS).map((key) => (
-            <SelectItem key={key} value={key}>
-              {key}
-            </SelectItem>
-          ))}
-        </SelectContent>
-      </Select>
-    </div>
+    <FilterBar>
+      <FilterGroup label="Status">
+        <Button
+          variant={statusFilter === 'all' ? 'secondary' : 'ghost'}
+          size="sm"
+          onClick={() => setStatusFilter('all')}
+          className="h-7 text-xs font-medium"
+        >
+          All
+        </Button>
+        <Button
+          variant={statusFilter === 'ready' ? 'secondary' : 'ghost'}
+          size="sm"
+          onClick={() => setStatusFilter('ready')}
+          className="h-7 text-xs font-medium"
+        >
+          Ready
+        </Button>
+        <Button
+          variant={statusFilter === 'notready' ? 'secondary' : 'ghost'}
+          size="sm"
+          onClick={() => setStatusFilter('notready')}
+          className="h-7 text-xs font-medium"
+        >
+          Not Ready
+        </Button>
+        <Button
+          variant={statusFilter === 'unschedulable' ? 'secondary' : 'ghost'}
+          size="sm"
+          onClick={() => setStatusFilter('unschedulable')}
+          className="h-7 text-xs font-medium"
+        >
+          Unschedulable
+        </Button>
+      </FilterGroup>
+      <div className="w-px h-4 bg-border mx-1" />
+      <FilterGroup label="View">
+        <Button
+          variant={showHeatmap ? 'secondary' : 'ghost'}
+          size="sm"
+          onClick={() => setShowHeatmap(!showHeatmap)}
+          className="h-7 gap-2 text-xs font-bold"
+        >
+          <LayoutGrid className="h-3.5 w-3.5" />
+          {showHeatmap ? 'Overview: On' : 'Overview: Off'}
+        </Button>
+      </FilterGroup>
+      <div className="w-px h-4 bg-border mx-1" />
+      <FilterGroup label="Dynamic Filters">
+        <NodeLabelSelector onLabelsChange={setSelectedLabels} />
+      </FilterGroup>
+    </FilterBar>
   )
 
   return (
     <div className="space-y-4">
       {showHeatmap && (
         <div className="animate-in fade-in slide-in-from-top-4 duration-500">
-          <ClusterHeatmap />
+          <ClusterHeatmap selectedLabels={selectedLabels} />
         </div>
       )}
       <ResourceTable
@@ -443,7 +383,7 @@ export function NodeListPage() {
           'status_nodeInfo_osImage',
         ]}
         extraToolbars={[filterToolbar]}
-        labelSelector={labelFilter}
+        labelSelector={selectedLabels}
       />
     </div>
   )

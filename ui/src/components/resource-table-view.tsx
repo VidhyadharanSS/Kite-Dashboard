@@ -1,4 +1,4 @@
-import React from 'react'
+import React, { useMemo } from 'react'
 import {
   flexRender,
   PaginationState,
@@ -13,6 +13,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
+import { Skeleton } from '@/components/ui/skeleton'
 import {
   Table,
   TableBody,
@@ -38,6 +39,49 @@ interface ResourceTableViewProps<T> {
   pagination: PaginationState
   setPagination: React.Dispatch<React.SetStateAction<PaginationState>>
 }
+
+const Highlight = ({ text, query }: { text: string; query: string }) => {
+  if (!query.trim()) return <>{text}</>
+  const parts = text.split(new RegExp(`(${query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi'))
+  return (
+    <>
+      {parts.map((part, i) =>
+        part.toLowerCase() === query.toLowerCase() ? (
+          <mark key={i} className="bg-primary/20 text-primary font-bold px-0.5 rounded">
+            {part}
+          </mark>
+        ) : (
+          part
+        )
+      )}
+    </>
+  )
+}
+
+const ResourceTableRow = React.memo(({ row, searchQuery, isSelected }: { row: any; searchQuery: string; isSelected: boolean }) => (
+  <TableRow data-state={isSelected && 'selected'}>
+    {row.getVisibleCells().map((cell: any, index: number) => {
+      const content = cell.column.columnDef.cell
+        ? flexRender(cell.column.columnDef.cell, cell.getContext())
+        : String(cell.getValue() || '-')
+
+      return (
+        <TableCell
+          key={cell.id}
+          className={`align-middle ${index <= 1 ? 'text-left' : 'text-center'}`}
+        >
+          {typeof content === 'string' ? (
+            <Highlight text={content} query={searchQuery} />
+          ) : (
+            content
+          )}
+        </TableCell>
+      )
+    })}
+  </TableRow>
+), (prev, next) => {
+  return prev.isSelected === next.isSelected && prev.searchQuery === next.searchQuery && prev.row.id === next.row.id
+})
 
 export function ResourceTableView<T>({
   table,
@@ -69,15 +113,43 @@ export function ResourceTableView<T>({
     }
 
     return rows.map((row) => (
-      <TableRow key={row.id} data-state={row.getIsSelected() && 'selected'}>
-        {row.getVisibleCells().map((cell, index) => (
+      <ResourceTableRow
+        key={row.id}
+        row={row}
+        searchQuery={searchQuery}
+        isSelected={row.getIsSelected()}
+      />
+    ))
+  }
+
+  const matchCount = useMemo(() => {
+    if (!searchQuery.trim()) return 0
+    let count = 0
+    const rows = table.getRowModel().rows
+    const escapedQuery = searchQuery.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+    const regex = new RegExp(escapedQuery, 'gi')
+
+    rows.forEach(row => {
+      row.getVisibleCells().forEach(cell => {
+        const val = cell.getValue()
+        if (typeof val === 'string') {
+          const matches = val.match(regex)
+          if (matches) count += matches.length
+        }
+      })
+    })
+    return count
+  }, [table, searchQuery])
+
+  const renderSkeletonRows = () => {
+    return Array.from({ length: 5 }).map((_, i) => (
+      <TableRow key={`skeleton-${i}`}>
+        {table.getAllLeafColumns().map((col, index) => (
           <TableCell
-            key={cell.id}
+            key={col.id}
             className={`align-middle ${index <= 1 ? 'text-left' : 'text-center'}`}
           >
-            {cell.column.columnDef.cell
-              ? flexRender(cell.column.columnDef.cell, cell.getContext())
-              : String(cell.getValue() || '-')}
+            <Skeleton className="h-4 w-full opacity-50" />
           </TableCell>
         ))}
       </TableRow>
@@ -91,9 +163,8 @@ export function ResourceTableView<T>({
     <div className={containerClassName}>
       <div className="rounded-lg border overflow-hidden">
         <div
-          className={`transition-opacity duration-200 ${
-            isLoading && dataLength > 0 ? 'opacity-75' : 'opacity-100'
-          }`}
+          className={`transition-opacity duration-200 ${isLoading && dataLength > 0 ? 'opacity-75' : 'opacity-100'
+            }`}
         >
           {emptyState || (
             <div
@@ -142,7 +213,11 @@ export function ResourceTableView<T>({
                   ))}
                 </TableHeader>
                 <TableBody className="**:data-[slot=table-cell]:first:w-0">
-                  {renderRows()}
+                  {isLoading && dataLength === 0 ? (
+                    renderSkeletonRows()
+                  ) : (
+                    renderRows()
+                  )}
                 </TableBody>
               </Table>
             </div>
@@ -157,7 +232,9 @@ export function ResourceTableView<T>({
               <>
                 Showing {filteredRowCount} of {totalRowCount} row(s)
                 {searchQuery && (
-                  <span className="ml-1">(filtered by "{searchQuery}")</span>
+                  <span className="ml-1">
+                    (filtered by "{searchQuery}" — <strong>{matchCount}</strong> match{matchCount !== 1 ? 'es' : ''} found)
+                  </span>
                 )}
               </>
             ) : (

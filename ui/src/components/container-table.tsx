@@ -1,7 +1,8 @@
 import { useState } from 'react'
 import { Container } from 'kubernetes-types/core/v1'
-import { ChevronDown, ChevronRight, Edit3 } from 'lucide-react'
+import { ChevronDown, ChevronRight, Edit3, Tag } from 'lucide-react'
 
+import { ImageUpdateDialog } from './image-update-dialog'
 import { ContainerEditDialog } from './container-edit-dialog'
 import { Badge } from './ui/badge'
 import { Button } from './ui/button'
@@ -11,9 +12,16 @@ export function ContainerTable(props: {
   container: Container
   onContainerUpdate?: (updatedContainer: Container) => void
   init?: boolean
+  /** For the Image Update dialog — pass these from the detail page */
+  resourceType?: 'deployments' | 'statefulsets' | 'daemonsets'
+  resourceName?: string
+  namespace?: string
+  containerIndex?: number
+  onImageUpdateSuccess?: () => void
 }) {
-  const { container, onContainerUpdate, init } = props
+  const { container, onContainerUpdate, init, resourceType, resourceName, namespace, containerIndex = 0, onImageUpdateSuccess } = props
   const [editDialogOpen, setEditDialogOpen] = useState(false)
+  const [imageUpdateOpen, setImageUpdateOpen] = useState(false)
   const [isExpanded, setIsExpanded] = useState(false)
   const [showAllEnvVars, setShowAllEnvVars] = useState(false)
   const [showAllVolumeMounts, setShowAllVolumeMounts] = useState(false)
@@ -56,6 +64,21 @@ export function ContainerTable(props: {
                 <Badge variant="outline" className="text-xs">
                   {container.imagePullPolicy}
                 </Badge>
+              )}
+              {/* Image Quick-Update button */}
+              {resourceType && resourceName && namespace && container.image && (
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    setImageUpdateOpen(true)
+                  }}
+                  className="h-8 w-8 p-0 text-muted-foreground hover:text-primary"
+                  title="Update image tag"
+                >
+                  <Tag className="h-3.5 w-3.5" />
+                </Button>
               )}
               {onContainerUpdate && (
                 <Button
@@ -455,6 +478,23 @@ export function ContainerTable(props: {
         container={container}
         onSave={handleContainerUpdate}
       />
+
+      {resourceType && resourceName && namespace && container.image && (
+        <ImageUpdateDialog
+          open={imageUpdateOpen}
+          onOpenChange={setImageUpdateOpen}
+          resourceType={resourceType}
+          resourceName={resourceName}
+          namespace={namespace}
+          containerName={container.name}
+          currentImage={container.image}
+          containerIndex={containerIndex}
+          onSuccess={() => {
+            setImageUpdateOpen(false)
+            onImageUpdateSuccess?.()
+          }}
+        />
+      )}
     </>
   )
 }

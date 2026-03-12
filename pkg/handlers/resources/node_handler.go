@@ -35,6 +35,7 @@ func NewNodeHandler() *NodeHandler {
 
 func (h *NodeHandler) List(c *gin.Context) {
 	cs := c.MustGet("cluster").(*cluster.ClientSet)
+
 	var nodeMetrics metricsv1.NodeMetricsList
 
 	// Parse label selector
@@ -144,6 +145,7 @@ func (h *NodeHandler) List(c *gin.Context) {
 	sort.Slice(result.Items, func(i, j int) bool {
 		return result.Items[i].Name < result.Items[j].Name
 	})
+
 	c.JSON(http.StatusOK, result)
 }
 

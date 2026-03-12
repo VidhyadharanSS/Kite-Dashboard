@@ -3,6 +3,9 @@ import { createColumnHelper } from '@tanstack/react-table'
 import { Deployment } from 'kubernetes-types/apps/v1'
 import { useTranslation } from 'react-i18next'
 import { Link, useNavigate } from 'react-router-dom'
+import { toast } from 'sonner'
+
+import * as api from '@/lib/api'
 
 import { getDeploymentStatus } from '@/lib/k8s'
 import { formatDate } from '@/lib/utils'
@@ -55,11 +58,25 @@ export function DeploymentListPage() {
         header: t('common.status'),
         cell: ({ row }) => {
           const status = getDeploymentStatus(row.original)
+
+          let subtext = null
+          if (status === 'Progressing' && row.original.status?.conditions) {
+            const progressingCond = row.original.status.conditions.find(c => c.type === 'Progressing')
+            if (progressingCond && progressingCond.message) {
+              subtext = progressingCond.message
+            } else if (row.original.status.availableReplicas !== row.original.status.replicas) {
+              subtext = `${row.original.status.availableReplicas || 0} / ${row.original.status.replicas || 0} pods available`
+            }
+          }
+
           return (
-            <Badge variant="outline" className="text-muted-foreground px-1.5">
-              <DeploymentStatusIcon status={status} />
-              {status}
-            </Badge>
+            <div className="flex flex-col gap-1">
+              <Badge variant="outline" className="text-muted-foreground px-1.5 w-fit">
+                <DeploymentStatusIcon status={status} />
+                {status}
+              </Badge>
+              {subtext && <span className="text-xs text-muted-foreground truncate max-w-[250px]" title={subtext}>{subtext}</span>}
+            </div>
           )
         },
       }),
@@ -117,6 +134,28 @@ export function DeploymentListPage() {
     navigate(`/deployments/${namespace}/${deployment.metadata?.name}`)
   }
 
+  const handleBatchRestart = useCallback(async (rows: Deployment[]) => {
+    const promises = rows.map((row) => {
+      const name = row.metadata?.name
+      const namespace = row.metadata?.namespace
+      if (!name || !namespace) return Promise.resolve()
+
+      return api.restartResource('deployments', name, namespace)
+        .then(() => toast.success(t('deployments.restartSuccess', { name, defaultValue: `Successfully restarted ${name}` })))
+        .catch((error) => {
+          console.error(`Failed to restart ${name}:`, error)
+          toast.error(t('deployments.restartFailed', { name, error: error.message, defaultValue: `Failed to restart ${name}: ${error.message}` }))
+          throw error
+        })
+    })
+
+    try {
+      await Promise.allSettled(promises)
+    } catch (e) {
+      // Errors handled individually
+    }
+  }, [t])
+
   return (
     <>
       <ResourceTable
@@ -125,6 +164,8 @@ export function DeploymentListPage() {
         searchQueryFilter={deploymentSearchFilter}
         showCreateButton={true}
         onCreateClick={handleCreateClick}
+        onBatchRestart={handleBatchRestart}
+        enableLabelFilter={true}
       />
 
       <DeploymentCreateDialog

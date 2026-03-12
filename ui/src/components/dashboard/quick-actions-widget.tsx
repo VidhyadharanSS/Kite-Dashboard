@@ -5,8 +5,8 @@ import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { useState } from 'react'
 import { useGlobalSearch } from '@/components/global-search-provider'
-import { useAuth } from '@/contexts/auth-context'
 import { useResources } from '@/lib/api'
+import { usePermissions } from '@/hooks/use-permissions'
 import type { Pod } from 'kubernetes-types/core/v1'
 import {
     Select,
@@ -21,12 +21,12 @@ export function QuickActionsWidget() {
     const { t } = useTranslation()
     const navigate = useNavigate()
     const { openSearch } = useGlobalSearch()
-    const { user } = useAuth()
+    const { canAccess } = usePermissions()
     const [selectedPod, setSelectedPod] = useState<string>('')
 
-    // Check if user has pod exec/log permissions (admin users only)
-    const canAccessPodExec = user?.isAdmin()
-    const canAccessPodLogs = user?.isAdmin()
+    // Check if user has pod exec/log permissions
+    const canAccessPodExec = canAccess('pods', 'exec')
+    const canAccessPodLogs = canAccess('pods', 'get')
 
     // Fetch running pods if user has permissions
     const { data: pods } = useResources('pods', undefined, {

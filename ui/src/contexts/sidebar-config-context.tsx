@@ -121,6 +121,14 @@ interface SidebarConfigProviderProps {
 }
 
 const defaultMenus: DefaultMenus = {
+  'sidebar.groups.cluster': [
+    {
+      titleKey: 'nav.namespaces',
+      url: '/namespaces',
+      icon: IconBoxMultiple,
+    },
+    { titleKey: 'nav.nodes', url: '/nodes', icon: IconServer2 },
+  ],
   'sidebar.groups.workloads': [
     { titleKey: 'nav.pods', url: '/pods', icon: IconBox },
     { titleKey: 'nav.deployments', url: '/deployments', icon: IconRocket },
@@ -189,12 +197,6 @@ const defaultMenus: DefaultMenus = {
     },
   ],
   'sidebar.groups.other': [
-    {
-      titleKey: 'nav.namespaces',
-      url: '/namespaces',
-      icon: IconBoxMultiple,
-    },
-    { titleKey: 'nav.nodes', url: '/nodes', icon: IconServer2 },
     { titleKey: 'nav.events', url: '/events', icon: IconBell },
     { titleKey: 'nav.crds', url: '/crds', icon: IconCode },
   ],

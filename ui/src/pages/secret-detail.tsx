@@ -1,4 +1,7 @@
 import { useEffect, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
+import { useNamespaceContext } from '@/hooks/use-namespace-context'
+
 import { IconLoader, IconRefresh, IconTrash } from '@tabler/icons-react'
 import * as yaml from 'js-yaml'
 import { Secret } from 'kubernetes-types/core/v1'
@@ -29,6 +32,9 @@ export function SecretDetail(props: { namespace: string; name: string }) {
   const [refreshKey, setRefreshKey] = useState(0)
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
   const [showDecodedYaml, setShowDecodedYaml] = useState(false)
+  const navigate = useNavigate()
+  const { setActiveNamespace } = useNamespaceContext()
+
 
   const { t } = useTranslation()
 
@@ -128,7 +134,15 @@ export function SecretDetail(props: { namespace: string; name: string }) {
           <h1 className="text-lg font-bold">{secret.metadata!.name}</h1>
           <p className="text-muted-foreground">
             Namespace:{' '}
-            <span className="font-medium">{secret.metadata!.namespace}</span>
+            <button
+              onClick={() => {
+                setActiveNamespace(namespace)
+                navigate(`/pods?namespace=${namespace}`)
+              }}
+              className="font-medium text-primary hover:underline"
+            >
+              {secret.metadata!.namespace}
+            </button>
           </p>
         </div>
         <div className="flex gap-2">

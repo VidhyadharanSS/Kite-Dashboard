@@ -104,6 +104,8 @@ func setupAPIRouter(r *gin.RouterGroup, cm *cluster.ClusterManager) {
 	userGroup := r.Group("/api/users")
 	{
 		userGroup.POST("/sidebar_preference", authHandler.RequireAuth(), handlers.UpdateSidebarPreference)
+		userGroup.GET("/sessions", authHandler.RequireAuth(), handlers.ListUserSessions)
+		userGroup.DELETE("/sessions/:id", authHandler.RequireAuth(), handlers.DeleteUserSession)
 	}
 
 	// admin apis
@@ -145,6 +147,7 @@ func setupAPIRouter(r *gin.RouterGroup, cm *cluster.ClusterManager) {
 		}
 
 		adminAPI.GET("/system/logs/:filename", handlers.StreamLogFile)
+		adminAPI.GET("/sessions", handlers.ListAllSessions)
 
 		userAPI := adminAPI.Group("/users")
 		{
@@ -242,11 +245,12 @@ func main() {
 	r.Use(middleware.Metrics())
 	if !common.DisableGZIP {
 		klog.Info("GZIP compression is enabled")
-		r.Use(gzip.Gzip(gzip.DefaultCompression, gzip.WithExcludedPaths([]string{"/metrics"})))
 	}
+	// Always apply gzip for speed as requested
+	r.Use(gzip.Gzip(gzip.DefaultCompression, gzip.WithExcludedPaths([]string{"/metrics"})))
 	r.Use(gin.Recovery())
-	r.Use(middleware.Logger())
 	r.Use(middleware.CORS())
+	r.Use(middleware.SecurityHeaders())
 	model.InitDB()
 	rbac.InitRBAC()
 	handlers.InitTemplates()

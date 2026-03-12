@@ -3,10 +3,11 @@ import { useMemo } from 'react'
 import Icon from '@/assets/icon.svg'
 import { useSidebarConfig } from '@/contexts/sidebar-config-context'
 import { CollapsibleContent } from '@radix-ui/react-collapsible'
-import { IconLayoutDashboard } from '@tabler/icons-react'
-import { ChevronDown } from 'lucide-react'
+import { IconLayoutDashboard, IconSearch } from '@tabler/icons-react'
+import { ChevronDown, BookOpen } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { Link, useLocation } from 'react-router-dom'
+import { usePermissions } from '@/hooks/use-permissions'
 
 
 import {
@@ -32,26 +33,38 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const location = useLocation()
   const { isMobile, setOpenMobile } = useSidebar()
   const { config, isLoading, getIconComponent } = useSidebarConfig()
+  const { canAccess } = usePermissions()
 
-  // --- FIX: Filter function to hide Secrets ---
-  const isHidden = (id: string, url: string) => {
-    // Check global hidden items
-    if (config?.hiddenItems.includes(id)) return true
-
-    // Explicitly hide secrets
-    if (id === 'secrets' || url.includes('/secrets')) return true
-
-    return false
+  // Helper to map URL to resource type
+  const getResourceFromUrl = (url: string) => {
+    const parts = url.split('/')
+    const base = parts[1] // e.g. "pods", "deployments"
+    if (base === 'persistentvolumeclaims') return 'persistentvolumeclaims'
+    if (base === 'persistentvolumes') return 'persistentvolumes'
+    if (base === 'storageclasses') return 'storageclasses'
+    if (base === 'configmaps') return 'configmaps'
+    if (base === 'serviceaccounts') return 'serviceaccounts'
+    if (base === 'rolebindings') return 'rolebindings'
+    if (base === 'clusterroles') return 'clusterroles'
+    if (base === 'clusterrolebindings') return 'clusterrolebindings'
+    if (base === 'horizontalpodautoscalers') return 'horizontalpodautoscalers'
+    return base
   }
-  // --------------------------------------------
+
 
   const pinnedItems = useMemo(() => {
     if (!config) return []
     return config.groups
       .flatMap((group) => group.items)
       .filter((item) => config.pinnedItems.includes(item.id))
-      .filter((item) => !isHidden(item.id, item.url)) // Apply fix
   }, [config])
+
+  const visiblePinnedItems = useMemo(() => {
+    return pinnedItems.filter((item) => {
+      const resource = getResourceFromUrl(item.url)
+      return canAccess(resource, 'list')
+    })
+  }, [pinnedItems, canAccess])
 
   const visibleGroups = useMemo(() => {
     if (!config) return []
@@ -62,11 +75,14 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         ...group,
         items: group.items
           .filter((item) => !config.pinnedItems.includes(item.id))
-          .filter((item) => !isHidden(item.id, item.url)) // Apply fix
+          .filter((item) => {
+            const resource = getResourceFromUrl(item.url)
+            return canAccess(resource, 'list')
+          })
           .sort((a, b) => a.order - b.order),
       }))
       .filter((group) => group.items.length > 0)
-  }, [config])
+  }, [config, canAccess])
 
   const isActive = (url: string) => {
     if (url === '/') {
@@ -108,7 +124,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   }
 
   return (
-    <Sidebar collapsible="offcanvas" {...props}>
+    <Sidebar collapsible="offcanvas" className="border-r border-border/40 bg-sidebar/70 backdrop-blur-xl" {...props}>
       <SidebarHeader>
         <SidebarMenu>
           <SidebarMenuItem>
@@ -149,17 +165,47 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                 </Link>
               </SidebarMenuButton>
             </SidebarMenuItem>
+
+            {/* Repositioned Tutorials link */}
+            <SidebarMenuItem>
+              <SidebarMenuButton
+                tooltip={t('nav.tutorials', 'Tutorials')}
+                asChild
+                isActive={isActive('/tutorials')}
+                className="transition-all duration-200 hover:bg-accent/60 active:scale-95 data-[active=true]:bg-primary/10 data-[active=true]:text-primary data-[active=true]:shadow-sm"
+              >
+                <Link to="/tutorials" onClick={handleMenuItemClick}>
+                  <BookOpen className="text-sidebar-primary h-4 w-4" />
+                  <span className="font-medium">{t('nav.tutorials', 'Tutorials')}</span>
+                </Link>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+
+            {/* Advanced Search link */}
+            <SidebarMenuItem>
+              <SidebarMenuButton
+                tooltip="Advanced Search"
+                asChild
+                isActive={isActive('/expression-search')}
+                className="transition-all duration-200 hover:bg-accent/60 active:scale-95 data-[active=true]:bg-primary/10 data-[active=true]:text-primary data-[active=true]:shadow-sm"
+              >
+                <Link to="/expression-search" onClick={handleMenuItemClick}>
+                  <IconSearch className="text-sidebar-primary h-4 w-4" />
+                  <span className="font-medium">Advanced Search</span>
+                </Link>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
           </SidebarMenu>
         </SidebarGroup>
 
-        {pinnedItems.length > 0 && (
+        {visiblePinnedItems.length > 0 && (
           <SidebarGroup>
             <SidebarGroupLabel className="text-xs font-bold uppercase tracking-wide text-muted-foreground">
               {t('sidebar.pinned', 'Pinned')}
             </SidebarGroupLabel>
             <SidebarGroupContent>
               <SidebarMenu>
-                {pinnedItems.map((item) => {
+                {visiblePinnedItems.map((item) => {
                   const IconComponent = getIconComponent(item.icon)
                   const title = item.titleKey
                     ? t(item.titleKey, { defaultValue: item.titleKey })

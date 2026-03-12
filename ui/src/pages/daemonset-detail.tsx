@@ -1,4 +1,7 @@
 import { useEffect, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
+import { useNamespaceContext } from '@/hooks/use-namespace-context'
+
 import {
   IconCircleCheckFilled,
   IconExclamationCircle,
@@ -46,6 +49,10 @@ export function DaemonSetDetail(props: { namespace: string; name: string }) {
   const { namespace, name } = props
   const [yamlContent, setYamlContent] = useState('')
   const [isSavingYaml, setIsSavingYaml] = useState(false)
+  const [isYamlDirty, setIsYamlDirty] = useState(false)
+  const navigate = useNavigate()
+  const { setActiveNamespace } = useNamespaceContext()
+
   const [isRestartPopoverOpen, setIsRestartPopoverOpen] = useState(false)
   const [refreshKey, setRefreshKey] = useState(0)
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
@@ -65,9 +72,11 @@ export function DaemonSetDetail(props: { namespace: string; name: string }) {
 
   useEffect(() => {
     if (daemonset) {
-      setYamlContent(yaml.dump(daemonset, { indent: 2 }))
+      if (!isYamlDirty) {
+        setYamlContent(yaml.dump(daemonset, { indent: 2 }))
+      }
     }
-  }, [daemonset])
+  }, [daemonset, isYamlDirty])
 
   // Auto-reset refresh interval when daemonset reaches stable state
   useEffect(() => {
@@ -113,7 +122,8 @@ export function DaemonSetDetail(props: { namespace: string; name: string }) {
       const parsedYaml = yaml.load(yamlContent) as DaemonSet
       await updateResource('daemonsets', name, namespace, parsedYaml)
       toast.success('DaemonSet YAML saved successfully')
-      setRefreshInterval(1000) // Set a short refresh interval to see changes
+      setIsYamlDirty(false)
+      setRefreshInterval(1000)
       await refetchDaemonSet()
     } catch (error) {
       console.error('Failed to save YAML:', error)
@@ -125,6 +135,7 @@ export function DaemonSetDetail(props: { namespace: string; name: string }) {
 
   const handleYamlChange = (content: string) => {
     setYamlContent(content)
+    setIsYamlDirty(true)
   }
 
   const handleRestart = async () => {
@@ -240,7 +251,16 @@ export function DaemonSetDetail(props: { namespace: string; name: string }) {
         <div>
           <h1 className="text-lg font-bold">{metadata?.name}</h1>
           <p className="text-muted-foreground">
-            Namespace: <span className="font-medium">{namespace}</span>
+            Namespace:{' '}
+            <button
+              onClick={() => {
+                setActiveNamespace(namespace)
+                navigate(`/pods?namespace=${namespace}`)
+              }}
+              className="font-medium text-primary hover:underline"
+            >
+              {namespace}
+            </button>
           </p>
         </div>
         <div className="flex gap-2">
@@ -418,14 +438,19 @@ export function DaemonSetDetail(props: { namespace: string; name: string }) {
                     </CardHeader>
                     <CardContent>
                       <div className="space-y-4">
-                        {spec.template.spec.initContainers.map((container) => (
+                        {spec.template.spec.initContainers.map((container, index) => (
                           <ContainerTable
                             key={container.name}
                             container={container}
+                            resourceType="daemonsets"
+                            resourceName={name}
+                            namespace={namespace}
+                            containerIndex={index}
+                            init
+                            onImageUpdateSuccess={refetchDaemonSet}
                             onContainerUpdate={(updatedContainer) =>
                               handleContainerUpdate(updatedContainer, true)
                             }
-                            init
                           />
                         ))}
                       </div>
@@ -441,10 +466,15 @@ export function DaemonSetDetail(props: { namespace: string; name: string }) {
                     </CardHeader>
                     <CardContent>
                       <div className="space-y-4">
-                        {spec.template.spec.containers.map((container) => (
+                        {spec.template.spec.containers.map((container, index) => (
                           <ContainerTable
                             key={container.name}
                             container={container}
+                            resourceType="daemonsets"
+                            resourceName={name}
+                            namespace={namespace}
+                            containerIndex={index}
+                            onImageUpdateSuccess={refetchDaemonSet}
                             onContainerUpdate={(updatedContainer) =>
                               handleContainerUpdate(updatedContainer, false)
                             }
@@ -455,17 +485,6 @@ export function DaemonSetDetail(props: { namespace: string; name: string }) {
                   </Card>
                 )}
               </div>
-            ),
-          },
-          {
-            value: 'topology',
-            label: 'Topology',
-            content: (
-              <ResourceTopology
-                resource="daemonsets"
-                name={name}
-                namespace={namespace}
-              />
             ),
           },
           {
@@ -568,11 +587,18 @@ export function DaemonSetDetail(props: { namespace: string; name: string }) {
             value: 'Related',
             label: 'Related',
             content: (
-              <RelatedResourcesTable
-                resource={'daemonsets'}
-                name={name}
-                namespace={namespace}
-              />
+              <div className="space-y-6">
+                <ResourceTopology
+                  resource="daemonsets"
+                  name={name}
+                  namespace={namespace}
+                />
+                <RelatedResourcesTable
+                  resource={'daemonsets'}
+                  name={name}
+                  namespace={namespace}
+                />
+              </div>
             ),
           },
           {

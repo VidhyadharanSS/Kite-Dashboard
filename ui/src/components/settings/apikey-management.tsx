@@ -9,7 +9,9 @@ import {
   IconTrash,
 } from '@tabler/icons-react'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { formatDistanceToNow } from 'date-fns'
 import { ColumnDef } from '@tanstack/react-table'
+
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
 
@@ -104,9 +106,9 @@ export function APIKeyManagement() {
         id: 'lastUsedAt',
         header: t('apikeyManagement.table.lastUsed', 'Last Used'),
         cell: ({ row: { original: apiKey } }) =>
-          apiKey.lastLoginAt ? (
+          apiKey.lastUsedAt ? (
             <span className="text-sm text-muted-foreground">
-              {new Date(apiKey.lastLoginAt).toLocaleString()}
+              {formatDistanceToNow(new Date(apiKey.lastUsedAt), { addSuffix: true })}
             </span>
           ) : (
             <Badge variant="secondary">

@@ -301,8 +301,8 @@ export const useResources = <T extends ResourceType>(
     enabled: !options?.disable,
     select: (data: ResourcesTypeMap[T]): ResourcesItems<T> => data.items,
     placeholderData: (prevData) => prevData,
-    refetchInterval: options?.refreshInterval || 0,
-    staleTime: options?.staleTime || (resource === 'crds' ? 5000 : 1000),
+    refetchInterval: (options?.refreshInterval && options.refreshInterval < 15000 && options.refreshInterval !== 0) ? 15000 : (options?.refreshInterval || 0),
+    staleTime: options?.staleTime || (resource === 'crds' ? 10000 : 2000),
   })
 }
 
@@ -472,7 +472,7 @@ export const useResource = <T extends keyof ResourceTypeMap>(
     },
     enabled: options?.enabled ?? true,
     refetchOnWindowFocus: 'always',
-    refetchInterval: options?.refreshInterval || 0, // Default to no auto-refresh
+    refetchInterval: (options?.refreshInterval && options.refreshInterval < 15000 && options.refreshInterval !== 0) ? 15000 : (options?.refreshInterval || 0),
     placeholderData: (prevData) => prevData,
     staleTime: options?.staleTime || 1000,
   })
@@ -569,7 +569,8 @@ export const usePodMetrics = (
       ),
     enabled: !!namespace && !!podName,
     staleTime: options?.staleTime || 10000, // 10 seconds cache
-    refetchInterval: options?.refreshInterval || 30 * 1000, // 1 second
+    // 1 second
+    refetchInterval: (options?.refreshInterval && options.refreshInterval < 15000) ? 15000 : (options?.refreshInterval || 30000),
     retry: 0,
     placeholderData: (prevData) => prevData,
   })
@@ -1722,6 +1723,48 @@ export const deleteAPIKey = async (
   return await apiClient.delete<{ message: string }>(`/admin/apikeys/${id}`)
 }
 
+// Session Management
+export interface UserSession {
+  id: number
+  userId: number
+  ip: string
+  userAgent: string
+  createdAt: string
+  lastUsedAt: string
+  expiresAt: string
+  user?: UserItem
+}
+
+export const fetchSessions = async (): Promise<UserSession[]> => {
+  return fetchAPI<{ sessions: UserSession[] }>('/users/sessions').then(
+    (res) => res.sessions
+  )
+}
+
+export const fetchAllSessions = async (): Promise<UserSession[]> => {
+  return fetchAPI<{ sessions: UserSession[] }>('/admin/sessions').then(
+    (res) => res.sessions
+  )
+}
+
+export const deleteSession = async (id: number): Promise<void> => {
+  return apiClient.delete<void>(`/users/sessions/${id}`)
+}
+
+export const useSessions = () => {
+  return useQuery({
+    queryKey: ['user-sessions'],
+    queryFn: fetchSessions,
+  })
+}
+
+export const useAllSessions = () => {
+  return useQuery({
+    queryKey: ['all-sessions'],
+    queryFn: fetchAllSessions,
+  })
+}
+
 export const usePodFiles = (
   namespace: string,
   podName: string,
@@ -1736,3 +1779,4 @@ export const usePodFiles = (
     staleTime: 10000, // 10 seconds cache
   })
 }
+

@@ -17,6 +17,7 @@ import (
 	"github.com/zxh326/kite/pkg/cluster"
 	"github.com/zxh326/kite/pkg/common"
 	"github.com/zxh326/kite/pkg/kube"
+	"github.com/zxh326/kite/pkg/logger"
 	"github.com/zxh326/kite/pkg/model"
 	"github.com/zxh326/kite/pkg/rbac"
 	corev1 "k8s.io/api/core/v1"
@@ -133,11 +134,12 @@ func (h *PodHandler) ListMetrics(c *gin.Context) (map[string]metricsv1.PodMetric
 }
 
 func (h *PodHandler) List(c *gin.Context) {
+	reduce := c.Query("reduce") == "true"
+	
 	objlist, err := h.list(c)
 	if err != nil {
 		return
 	}
-	reduce := c.Query("reduce") == "true"
 	metricsMap, err := h.ListMetrics(c)
 	if err != nil {
 		klog.Warningf("Failed to list pod metrics: %v", err)
@@ -174,6 +176,7 @@ func (h *PodHandler) List(c *gin.Context) {
 		}
 		result.Items[i] = item
 	}
+
 	c.JSON(200, result)
 }
 
@@ -226,6 +229,16 @@ func (h *PodHandler) Resize(c *gin.Context) {
 		updatedPod,
 		metav1.UpdateOptions{},
 	)
+	success := err == nil
+	errMsg := ""
+	if err != nil {
+		errMsg = err.Error()
+	}
+	h.recordHistory(c, "resize", oldPod, updatedPod, success, errMsg)
+	if success {
+		user := c.MustGet("user").(model.User)
+		logger.Audit(user.Key(), "Resize", "pods", namespace, cs.Name, fmt.Sprintf("Resized pod %s", name))
+	}
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return

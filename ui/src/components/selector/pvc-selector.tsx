@@ -2,19 +2,13 @@ import { useMemo } from 'react'
 import { PersistentVolumeClaim } from 'kubernetes-types/core/v1'
 
 import { useResources } from '@/lib/api'
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select'
+import { Combobox, ComboboxOption } from '@/components/ui/combobox'
 
 export function PVCSelector({
   selectedPVC,
   onPVCChange,
   namespace,
-  placeholder = 'Select a pvc',
+  placeholder = 'Select a PVC',
   className,
 }: {
   selectedPVC?: string
@@ -25,36 +19,32 @@ export function PVCSelector({
 }) {
   const { data, isLoading } = useResources('persistentvolumeclaims', namespace)
 
-  const sortedPVCs = useMemo(() => {
-    return data?.slice().sort((a, b) => {
-      const nameA = a.metadata?.name?.toLowerCase() || ''
-      const nameB = b.metadata?.name?.toLowerCase() || ''
-      return nameA.localeCompare(nameB)
-    })
+  const options: ComboboxOption[] = useMemo(() => {
+    return (
+      data
+        ?.slice()
+        .sort((a, b) => {
+          const nameA = a.metadata?.name?.toLowerCase() || ''
+          const nameB = b.metadata?.name?.toLowerCase() || ''
+          return nameA.localeCompare(nameB)
+        })
+        .map((pvc: PersistentVolumeClaim) => ({
+          value: pvc.metadata!.name!,
+          label: pvc.metadata!.name!,
+        })) || []
+    )
   }, [data])
 
   return (
-    <Select value={selectedPVC} onValueChange={onPVCChange}>
-      <SelectTrigger className={className}>
-        <SelectValue placeholder={placeholder} />
-      </SelectTrigger>
-      <SelectContent>
-        {isLoading && (
-          <SelectItem disabled value="_loading">
-            Loading pvc...
-          </SelectItem>
-        )}
-        {sortedPVCs?.map((pvc: PersistentVolumeClaim) => (
-          <SelectItem key={pvc.metadata!.name} value={pvc.metadata!.name!}>
-            {pvc.metadata!.name}
-          </SelectItem>
-        ))}
-        {!isLoading && (!sortedPVCs || sortedPVCs.length === 0) && (
-          <SelectItem disabled value="_empty">
-            No pvc found
-          </SelectItem>
-        )}
-      </SelectContent>
-    </Select>
+    <Combobox
+      options={options}
+      value={selectedPVC}
+      onValueChange={onPVCChange}
+      placeholder={isLoading ? 'Loading...' : placeholder}
+      searchPlaceholder="Search PVCs..."
+      emptyText="No PVCs found."
+      triggerClassName={className}
+      disabled={isLoading}
+    />
   )
 }

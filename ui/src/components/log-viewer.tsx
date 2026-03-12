@@ -8,6 +8,7 @@ import {
   IconPalette,
   IconSearch,
   IconSettings,
+  IconTextWrap,
   IconX,
 } from '@tabler/icons-react'
 import { Container, Pod } from 'kubernetes-types/core/v1'
@@ -25,13 +26,6 @@ import { useLogsWebSocket } from '@/lib/api'
 import { toSimpleContainer } from '@/lib/k8s'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import {
@@ -47,6 +41,12 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { Switch } from '@/components/ui/switch'
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip'
 
 import { ConnectionIndicator } from './connection-indicator'
 import { NetworkSpeedIndicator } from './network-speed-indicator'
@@ -108,17 +108,20 @@ export function LogViewer({
   const containers = useMemo(() => {
     return toSimpleContainer(initContainers, _containers)
   }, [_containers, initContainers])
+
   const [selectedContainers, setSelectedContainers] = useState<string[]>([])
   const [tailLines, setTailLines] = useState(() => {
     const saved = localStorage.getItem('log-viewer-tail-lines')
     return saved ? parseInt(saved, 10) : 100
   })
+
   const { t } = useTranslation()
   const [timestamps, setTimestamps] = useState(false)
   const [previous, setPrevious] = useState(false)
   const [filterTerm, setFilterTerm] = useState('')
   const [showScrollToBottom, setShowScrollToBottom] = useState(false)
   const [isFullscreen, setIsFullscreen] = useState(false)
+
   const [wordWrap, setWordWrap] = useState<boolean>(() => {
     const saved = localStorage.getItem('log-viewer-word-wrap')
     if (saved === null) {
@@ -152,23 +155,27 @@ export function LogViewer({
     const saved = localStorage.getItem('log-viewer-font-size')
     return saved ? parseInt(saved, 10) : 14
   })
+
   const editorRef = useRef<editor.IStandaloneCodeEditor | null>(null)
-  const [logCount, setLogCount] = useState(0) // Track log count for re-rendering
+  const [logCount, setLogCount] = useState(0)
   const ansiStatesRef = useRef<Record<string, AnsiState>>({})
   const decorationIdsRef = useRef<string[]>([])
 
   const [rawLogs, setRawLogs] = useState<{ text: string; className: string }[]>([])
   const [followLogs, setFollowLogs] = useState(true)
 
+  // Performance Optimization: Batching incoming logs
+  const logBufferRef = useRef<{ log: string; container?: string }[]>([])
+  const flushTimeoutRef = useRef<NodeJS.Timeout | null>(null)
+
   const cleanLog = useCallback(() => {
     setRawLogs([])
     setLogCount(0)
     ansiStatesRef.current = {}
+    logBufferRef.current = []
     if (editorRef.current) {
       const model = editorRef.current.getModel()
-      if (model) {
-        model.setValue('')
-      }
+      if (model) model.setValue('')
     }
   }, [])
 
@@ -177,43 +184,76 @@ export function LogViewer({
     if (
       lowerText.includes('error') ||
       lowerText.includes('failed') ||
-      lowerText.includes('stderr')
-    )
-      return 'ansi-log-error'
+      lowerText.includes('stderr') ||
+      lowerText.includes('exception')
+    ) return 'ansi-log-error'
     if (lowerText.includes('warn')) return 'ansi-log-warn'
     if (lowerText.includes('info')) return 'ansi-log-info'
     if (
       lowerText.includes('success') ||
       lowerText.includes('ok') ||
       lowerText.includes('ready')
-    )
-      return 'ansi-log-success'
+    ) return 'ansi-log-success'
     return ''
   }
 
-  const appendLog = useCallback((log: string, container?: string) => {
-    if (!ansiStatesRef.current[container || 'default']) {
-      ansiStatesRef.current[container || 'default'] = {}
-    }
-    const { segments, finalState } = parseAnsi(log, ansiStatesRef.current[container || 'default'])
-    ansiStatesRef.current[container || 'default'] = finalState
+  const flushLogs = useCallback(() => {
+    if (logBufferRef.current.length === 0) return
 
-    const plainText = segments.map((s) => s.text).join('')
-    const ansiClass = segments.map((s) => getAnsiClassNames(s.styles)).join(' ')
+    const processedLogs = logBufferRef.current.map(({ log, container }) => {
+      const containerKey = container || 'default'
+      if (!ansiStatesRef.current[containerKey]) {
+        ansiStatesRef.current[containerKey] = {}
+      }
 
-    const prefix = container && selectedContainers.length > 1 ? `[${container}] ` : ''
-    const fullText = prefix + plainText
-    const levelClass = getLogLevelClass(fullText)
+      const { segments, finalState } = parseAnsi(log, ansiStatesRef.current[containerKey])
+      ansiStatesRef.current[containerKey] = finalState
+
+      const plainText = segments.map((s) => s.text).join('')
+      const ansiClass = segments.map((s) => getAnsiClassNames(s.styles)).join(' ')
+
+      const prefix = container && selectedContainers.length > 1 ? `[${container}] ` : ''
+      const fullText = prefix + plainText
+      const levelClass = getLogLevelClass(fullText)
+      const logLevel = levelClass.replace('ansi-log-', '') as 'error' | 'warn' | 'info' | 'success' | ''
+
+      return {
+        text: fullText,
+        className: `${ansiClass} ${levelClass} log-line`.trim(),
+        level: logLevel,
+        timestamp: new Date().getTime()
+      }
+    })
 
     setRawLogs((prev) => {
-      const newLogs = [
-        ...prev,
-        { text: fullText, className: `${ansiClass} ${levelClass}`.trim() },
-      ]
-      return newLogs.slice(-5000)
+      const newLogs = [...prev, ...processedLogs]
+      return newLogs.slice(-10000) // Keep max 10,000 lines
     })
-    setLogCount((prev) => prev + 1)
+
+    setLogCount((prev) => prev + processedLogs.length)
+
+    // Clear buffer and timer
+    logBufferRef.current = []
+    flushTimeoutRef.current = null
   }, [selectedContainers.length])
+
+  const appendLog = useCallback((log: string, container?: string) => {
+    logBufferRef.current.push({ log, container })
+
+    if (!flushTimeoutRef.current) {
+      // Batch updates every 100ms to prevent UI freezing
+      flushTimeoutRef.current = setTimeout(() => {
+        flushLogs()
+      }, 100)
+    }
+  }, [flushLogs])
+
+  // Cleanup timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (flushTimeoutRef.current) clearTimeout(flushTimeoutRef.current)
+    }
+  }, [])
 
   // Filtered logs for display
   const filtered = useMemo(() => {
@@ -232,6 +272,38 @@ export function LogViewer({
   const errorCount = useMemo(() => {
     return rawLogs.filter((l) => l.className.includes('ansi-log-error')).length
   }, [rawLogs])
+
+  const matchCount = useMemo(() => {
+    if (!filterTerm.trim()) return 0
+    let count = 0
+    const escapedQuery = filterTerm.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+    const regex = new RegExp(escapedQuery, 'gi')
+    filtered.forEach(log => {
+      const matches = log.text.match(regex)
+      if (matches) count += matches.length
+    })
+    return count
+  }, [filtered, filterTerm])
+
+  const exportSelection = useCallback(() => {
+    if (!editorRef.current) return
+    const selection = editorRef.current.getSelection()
+    const model = editorRef.current.getModel()
+    if (selection && model) {
+      const selectedText = model.getValueInRange(selection)
+      if (selectedText) {
+        const blob = new Blob([selectedText], { type: 'text/plain' })
+        const url = URL.createObjectURL(blob)
+        const a = document.createElement('a')
+        a.href = url
+        a.download = `selected-logs-${new Date().getTime()}.txt`
+        document.body.appendChild(a)
+        a.click()
+        document.body.removeChild(a)
+        URL.revokeObjectURL(url)
+      }
+    }
+  }, [])
 
   // Update editor content when filtered logs change
   useEffect(() => {
@@ -332,8 +404,6 @@ export function LogViewer({
   // Handle editor mount
   const handleEditorMount: OnMount = useCallback((editor) => {
     editorRef.current = editor
-
-    // Configure search widget
     editor.updateOptions({
       find: {
         addExtraSpaceOnTop: false,
@@ -405,7 +475,6 @@ export function LogViewer({
     }
   }, [])
 
-  // Handle fullscreen toggle
   const toggleFullscreen = useCallback(() => {
     setIsFullscreen((prev) => !prev)
   }, [])
@@ -424,23 +493,22 @@ export function LogViewer({
     })
   }, [])
 
+  const searchInputRef = useRef<HTMLInputElement>(null)
+
   // Handle keyboard shortcuts
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      // Ctrl/Cmd + F to open Monaco search
       if ((e.ctrlKey || e.metaKey) && e.key === 'f') {
         e.preventDefault()
-        editorRef.current?.getAction('actions.find')?.run()
+        searchInputRef.current?.focus()
       }
       if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
         toggleFullscreen()
       }
-      // Alt/Option + Z to toggle word wrap
       if (e.altKey && (e.key === 'z' || e.key === 'Z' || e.key === 'Ω')) {
         e.preventDefault()
         toggleWordWrap()
       }
-      // Font size shortcuts
       if ((e.ctrlKey || e.metaKey) && (e.key === '=' || e.key === '+')) {
         e.preventDefault()
         handleFontSizeChange(Math.min(24, fontSize + 1))
@@ -451,7 +519,7 @@ export function LogViewer({
       }
       if ((e.ctrlKey || e.metaKey) && e.key === '0') {
         e.preventDefault()
-        handleFontSizeChange(14) // Reset to default font size
+        handleFontSizeChange(14)
       }
     }
 
@@ -464,11 +532,13 @@ export function LogViewer({
     fontSize,
     handleFontSizeChange,
     toggleWordWrap,
+    matchCount,
   ])
 
   return (
-    <Card
-      className={`h-full flex flex-col py-4 gap-0 ${isFullscreen ? 'fixed inset-0 z-50 m-0 rounded-none' : ''} ${wordWrap ? 'whitespace-pre-wrap' : 'whitespace-pre'} `}
+    <div
+      className={`flex flex-col bg-background border border-border rounded-md overflow-hidden ${isFullscreen ? 'fixed inset-0 z-[100] border-none rounded-none' : 'h-[calc(100dvh-180px)]'
+        } ${wordWrap ? 'whitespace-pre-wrap' : 'whitespace-pre'}`}
     >
       <style>
         {generateAnsiCss()}
@@ -479,102 +549,135 @@ export function LogViewer({
           .ansi-log-success { color: #23d18b !important; }
         `}
       </style>
-      <CardHeader>
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <CardTitle className="text-lg">Logs</CardTitle>
-            <CardDescription>
-              <div className="flex items-center gap-4 text-sm text-muted-foreground">
-                <span>
-                  {logCount} lines {filterTerm.length > 0 && `(filtered)`}
-                </span>
-                <ConnectionIndicator
-                  isConnected={isConnected}
-                  onReconnect={refetch}
-                />
-                <NetworkSpeedIndicator
-                  downloadSpeed={downloadSpeed}
-                  uploadSpeed={0}
-                />
-                {isLoading && <span>Loading...</span>}
-                {isReconnecting && (
-                  <span className="text-blue-600">Reconnecting...</span>
-                )}
-              </div>
-            </CardDescription>
-          </div>
-          <div className="flex items-center gap-2">
-            <div className="relative">
-              <IconSearch className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
-              <Input
-                placeholder={'Filter logs...'}
-                value={filterTerm}
-                onChange={(e) => setFilterTerm(e.target.value)}
-                className="pl-8 w-full pr-8"
-              />
-            </div>
 
-            {/* Error Mode Toggle */}
-            <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border bg-rose-500/5 border-rose-500/20">
-              <Label htmlFor="error-mode" className="text-[10px] font-bold text-rose-600 uppercase">Error Mode</Label>
-              <Switch
-                id="error-mode"
-                checked={errorOnly}
-                onCheckedChange={setErrorOnly}
-                className="scale-75 data-[state=checked]:bg-rose-500"
-              />
-              {errorCount > 0 && (
-                <Badge variant="destructive" className="h-4 px-1 text-[9px] animate-pulse">
-                  {errorCount}
+      {/* Sleek Toolbar Header */}
+      <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-2 bg-muted/30 border-b border-border">
+        {/* Left Section */}
+        <div className="flex flex-wrap items-center gap-3">
+          <div className="flex items-center gap-2">
+            <span className="font-semibold text-sm">Logs</span>
+            <span className="text-xs text-muted-foreground whitespace-nowrap">
+              {logCount} lines
+              {filterTerm.length > 0 && (
+                <Badge variant="secondary" className="ml-1 h-4 px-1.5 text-[10px] bg-blue-500/10 text-blue-500 border-blue-500/20">
+                  {matchCount} match{matchCount !== 1 ? 'es' : ''}
                 </Badge>
               )}
-            </div>
+            </span>
+          </div>
 
-            {/* Multi-Container Selector */}
-            {containers.length > 0 && (
-              <MultiContainerSelector
-                containers={containers}
-                selectedContainers={selectedContainers}
-                onContainersChange={setSelectedContainers}
-              />
+          {/* Restored Connection & Loading Indicators */}
+          <div className="flex items-center gap-2">
+            <ConnectionIndicator
+              isConnected={isConnected}
+              onReconnect={refetch}
+            />
+            <NetworkSpeedIndicator
+              downloadSpeed={downloadSpeed}
+              uploadSpeed={0}
+            />
+            {isLoading && <span className="text-[10px] text-muted-foreground animate-pulse">Loading...</span>}
+            {isReconnecting && <span className="text-[10px] text-blue-500 animate-pulse">Reconnecting...</span>}
+          </div>
+
+          <Button
+            variant={timestamps ? "secondary" : "outline"}
+            size="sm"
+            className="h-8 px-3 text-xs"
+            onClick={() => setTimestamps(!timestamps)}
+          >
+            Time
+          </Button>
+
+          <Button
+            variant="outline"
+            size="sm"
+            className="h-8 px-3 text-xs gap-1.5"
+            onClick={exportSelection}
+            title="Export Selected Region"
+          >
+            <IconDownload size={14} />
+            <span className="hidden sm:inline">Export Selection</span>
+          </Button>
+
+          {/* Inline Search */}
+          <div className="relative group flex items-center">
+            <IconSearch className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+            <Input
+              ref={searchInputRef}
+              placeholder="Filter logs..."
+              value={filterTerm}
+              onChange={(e) => setFilterTerm(e.target.value)}
+              className="h-8 w-[140px] lg:w-[220px] pl-8 pr-3 text-xs bg-background/50 focus-visible:ring-1 focus-visible:ring-primary shadow-sm"
+            />
+          </div>
+
+          {/* Error Mode Toggle */}
+          <div className="flex items-center gap-1.5 px-3 py-1 rounded-md border bg-rose-500/5 border-rose-500/20 h-8">
+            <Label htmlFor="error-mode" className="text-[10px] font-bold text-rose-600 uppercase cursor-pointer">Error Mode</Label>
+            <Switch
+              id="error-mode"
+              checked={errorOnly}
+              onCheckedChange={setErrorOnly}
+              className="scale-75 data-[state=checked]:bg-rose-500"
+            />
+            {errorCount > 0 && (
+              <Badge variant="destructive" className="h-4 px-1 min-w-[16px] flex items-center justify-center text-[9px] animate-pulse">
+                {errorCount}
+              </Badge>
             )}
+          </div>
+        </div>
 
-            {/* Pod Selector */}
-            {pods && (
-              <PodSelector
-                pods={[...pods].sort((a, b) =>
-                  (a.metadata?.creationTimestamp || 0) >
-                    (b.metadata?.creationTimestamp || 0)
-                    ? -1
-                    : 1
-                )}
-                showAllOption={true}
-                selectedPod={selectPodName}
-                onPodChange={(v) => setSelectPodName(v || '_all')}
-              />
-            )}
+        {/* Right Section */}
+        <div className="flex items-center gap-2">
+          {containers.length > 0 && (
+            <MultiContainerSelector
+              containers={containers}
+              selectedContainers={selectedContainers}
+              onContainersChange={setSelectedContainers}
+            />
+          )}
 
-            {/* Quick Theme Toggle */}
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={cycleTheme}
-              title={`Current theme: ${TERMINAL_THEMES[logTheme].name}`}
-              className="relative"
-            >
-              <IconPalette className="h-4 w-4" />
-              <div
-                className="absolute -top-1 -right-1 w-3 h-3 rounded-full border border-gray-400"
-                style={{
-                  backgroundColor: TERMINAL_THEMES[logTheme].background,
-                }}
-              ></div>
-            </Button>
+          {pods && (
+            <PodSelector
+              pods={[...pods].sort((a, b) =>
+                (a.metadata?.creationTimestamp || 0) >
+                  (b.metadata?.creationTimestamp || 0)
+                  ? -1
+                  : 1
+              )}
+              showAllOption={true}
+              selectedPod={selectPodName}
+              onPodChange={(v) => setSelectPodName(v || '_all')}
+            />
+          )}
 
-            {/* Settings */}
+          <div className="w-px h-4 bg-border mx-1 hidden sm:block" />
+
+          {/* Quick Actions */}
+          <TooltipProvider delayDuration={300}>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="outline"
+                  size="icon"
+                  className="h-8 w-8 relative text-muted-foreground hover:text-foreground hidden sm:flex"
+                  onClick={cycleTheme}
+                >
+                  <IconPalette className="h-4 w-4" />
+                  <div
+                    className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full border border-border"
+                    style={{ backgroundColor: TERMINAL_THEMES[logTheme].background }}
+                  />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>Cycle Theme</TooltipContent>
+            </Tooltip>
+
             <Popover>
               <PopoverTrigger asChild>
-                <Button variant="outline" size="sm">
+                <Button variant="outline" size="icon" className="h-8 w-8 text-muted-foreground hover:text-foreground">
                   <IconSettings className="h-4 w-4" />
                 </Button>
               </PopoverTrigger>
@@ -582,13 +685,8 @@ export function LogViewer({
                 <div className="space-y-4">
                   <div className="flex items-center justify-between">
                     <Label htmlFor="tail-lines">Tail Lines</Label>
-                    <Select
-                      value={tailLines.toString()}
-                      onValueChange={(value) =>
-                        handleTailLinesChange(Number(value))
-                      }
-                    >
-                      <SelectTrigger>
+                    <Select value={tailLines.toString()} onValueChange={(v) => handleTailLinesChange(Number(v))}>
+                      <SelectTrigger className="w-[120px] h-8 text-xs">
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
@@ -603,213 +701,143 @@ export function LogViewer({
                   </div>
 
                   <div className="flex items-center justify-between">
-                    <Label htmlFor="timestamps">Show Timestamps</Label>
-                    <Switch
-                      id="timestamps"
-                      checked={timestamps}
-                      onCheckedChange={setTimestamps}
-                    />
+                    <Label htmlFor="timestamps-pop">Show Timestamps</Label>
+                    <Switch id="timestamps-pop" checked={timestamps} onCheckedChange={setTimestamps} />
                   </div>
 
                   <div className="flex items-center justify-between">
-                    <Label htmlFor="previous">Previous Container</Label>
-                    <Switch
-                      id="previous"
-                      checked={previous}
-                      onCheckedChange={setPrevious}
-                    />
+                    <Label htmlFor="previous-pop">Previous Container</Label>
+                    <Switch id="previous-pop" checked={previous} onCheckedChange={setPrevious} />
                   </div>
 
                   <div className="flex items-center justify-between">
-                    <Label htmlFor="word-wrap">Word Wrap</Label>
-                    <Switch
-                      id="word-wrap"
-                      checked={wordWrap}
-                      onCheckedChange={toggleWordWrap}
-                    />
+                    <Label htmlFor="word-wrap-pop">Word Wrap</Label>
+                    <Switch id="word-wrap-pop" checked={wordWrap} onCheckedChange={toggleWordWrap} />
                   </div>
 
                   <div className="flex items-center justify-between">
                     <Label htmlFor="show-line-numbers">Show Line Numbers</Label>
-                    <Switch
-                      id="show-line-numbers"
-                      checked={showLineNumbers}
-                      onCheckedChange={toggleShowLineNumbers}
-                    />
+                    <Switch id="show-line-numbers" checked={showLineNumbers} onCheckedChange={toggleShowLineNumbers} />
                   </div>
 
                   <div className="flex items-center justify-between">
                     <Label htmlFor="follow-logs">Follow Logs</Label>
-                    <Switch
-                      id="follow-logs"
-                      checked={followLogs}
-                      onCheckedChange={setFollowLogs}
-                    />
+                    <Switch id="follow-logs" checked={followLogs} onCheckedChange={setFollowLogs} />
                   </div>
 
-                  {/* Log Theme Selector */}
                   <div className="space-y-2">
                     <div className="flex items-center justify-between">
-                      <Label htmlFor="log-theme">Log Theme</Label>
-                      <Select
-                        value={logTheme}
-                        onValueChange={handleThemeChange}
-                      >
-                        <SelectTrigger>
+                      <Label>Log Theme</Label>
+                      <Select value={logTheme} onValueChange={handleThemeChange}>
+                        <SelectTrigger className="w-[120px] h-8 text-xs">
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
-                          {Object.entries(TERMINAL_THEMES).map(
-                            ([key, theme]) => (
-                              <SelectItem key={key} value={key}>
-                                <div className="flex items-center gap-2">
-                                  {theme.name}
-                                </div>
-                              </SelectItem>
-                            )
-                          )}
+                          {Object.entries(TERMINAL_THEMES).map(([key, theme]) => (
+                            <SelectItem key={key} value={key} className="text-xs">
+                              {theme.name}
+                            </SelectItem>
+                          ))}
                         </SelectContent>
                       </Select>
                     </div>
                   </div>
 
-                  {/* Font Size Selector */}
                   <div className="space-y-2">
                     <div className="flex items-center justify-between">
-                      <Label htmlFor="font-size">Font Size</Label>
-                      <Select
-                        value={fontSize.toString()}
-                        onValueChange={(value) =>
-                          handleFontSizeChange(Number(value))
-                        }
-                      >
-                        <SelectTrigger>
+                      <Label>Font Size</Label>
+                      <Select value={fontSize.toString()} onValueChange={(v) => handleFontSizeChange(Number(v))}>
+                        <SelectTrigger className="w-[120px] h-8 text-xs">
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="10">10px</SelectItem>
-                          <SelectItem value="11">11px</SelectItem>
-                          <SelectItem value="12">12px</SelectItem>
-                          <SelectItem value="13">13px</SelectItem>
-                          <SelectItem value="14">14px</SelectItem>
-                          <SelectItem value="15">15px</SelectItem>
-                          <SelectItem value="16">16px</SelectItem>
-                          <SelectItem value="18">18px</SelectItem>
-                          <SelectItem value="20">20px</SelectItem>
-                          <SelectItem value="22">22px</SelectItem>
-                          <SelectItem value="24">24px</SelectItem>
+                          {['10', '11', '12', '13', '14', '15', '16', '18', '20', '22', '24'].map(size => (
+                            <SelectItem key={size} value={size} className="text-xs">{size}px</SelectItem>
+                          ))}
                         </SelectContent>
                       </Select>
                     </div>
                   </div>
 
-                  {/* Keyboard Shortcuts */}
                   <div className="space-y-2 pt-2 border-t">
-                    <Label className="text-xs font-medium text-muted-foreground">
-                      Keyboard Shortcuts
-                    </Label>
-                    <div className="space-y-1 text-xs text-muted-foreground">
-                      <div className="flex justify-between">
-                        <span>Open Search</span>
-                        <kbd className="px-1 py-0.5 bg-muted rounded text-xs">
-                          Ctrl+F
-                        </kbd>
-                      </div>
-                      <div className="flex justify-between">
-                        <span>Toggle Fullscreen</span>
-                        <kbd className="px-1 py-0.5 bg-muted rounded text-xs">
-                          Ctrl+Enter
-                        </kbd>
-                      </div>
-                      <div className="flex justify-between">
-                        <span>Toggle Word Wrap</span>
-                        <kbd className="px-1 py-0.5 bg-muted rounded text-xs">
-                          Alt+Z
-                        </kbd>
-                      </div>
-                      <div className="flex justify-between">
-                        <span>Increase Font Size</span>
-                        <kbd className="px-1 py-0.5 bg-muted rounded text-xs">
-                          Ctrl++
-                        </kbd>
-                      </div>
-                      <div className="flex justify-between">
-                        <span>Decrease Font Size</span>
-                        <kbd className="px-1 py-0.5 bg-muted rounded text-xs">
-                          Ctrl+-
-                        </kbd>
-                      </div>
-                      <div className="flex justify-between">
-                        <span>Reset Font Size</span>
-                        <kbd className="px-1 py-0.5 bg-muted rounded text-xs">
-                          Ctrl+0
-                        </kbd>
-                      </div>
+                    <Label className="text-xs font-bold uppercase text-muted-foreground">Shortcuts</Label>
+                    <div className="space-y-1 text-[11px] text-muted-foreground font-mono">
+                      <div className="flex justify-between"><span>Search</span><kbd>Ctrl+F</kbd></div>
+                      <div className="flex justify-between"><span>Fullscreen</span><kbd>Ctrl+Enter</kbd></div>
+                      <div className="flex justify-between"><span>Word Wrap</span><kbd>Alt+Z</kbd></div>
+                      <div className="flex justify-between"><span>Zoom In/Out</span><kbd>Ctrl +/-</kbd></div>
                     </div>
                   </div>
                 </div>
               </PopoverContent>
             </Popover>
 
-            {/* Clear Logs */}
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={clearLogs}
-              title="Clear logs"
-            >
-              <IconClearAll className="h-4 w-4" />
-            </Button>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="outline"
+                  size="icon"
+                  className={`h-8 w-8 text-muted-foreground hover:text-foreground ${wordWrap ? 'bg-primary/10 border-primary/30 text-primary' : ''}`}
+                  onClick={toggleWordWrap}
+                >
+                  <IconTextWrap className="h-4 w-4" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>Toggle Word Wrap</TooltipContent>
+            </Tooltip>
 
-            {/* Download */}
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={downloadLogs}
-              disabled={logCount === 0}
-            >
-              <IconDownload className="h-4 w-4" />
-            </Button>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button variant="outline" size="icon" className="h-8 w-8 text-muted-foreground hover:text-foreground" onClick={clearLogs}>
+                  <IconClearAll className="h-4 w-4" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>Clear Logs</TooltipContent>
+            </Tooltip>
 
-            {/* Fullscreen Toggle */}
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={toggleFullscreen}
-              title={
-                isFullscreen ? 'Exit fullscreen (ESC)' : 'Enter fullscreen'
-              }
-            >
-              {isFullscreen ? (
-                <IconMinimize className="h-4 w-4" />
-              ) : (
-                <IconMaximize className="h-4 w-4" />
-              )}
-            </Button>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button variant="outline" size="icon" className="h-8 w-8 text-muted-foreground hover:text-foreground" onClick={downloadLogs} disabled={logCount === 0}>
+                  <IconDownload className="h-4 w-4" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>Download Logs</TooltipContent>
+            </Tooltip>
 
-            {/* Close */}
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button variant="outline" size="icon" className="h-8 w-8 text-muted-foreground hover:text-foreground hidden sm:flex" onClick={toggleFullscreen}>
+                  {isFullscreen ? <IconMinimize className="h-4 w-4" /> : <IconMaximize className="h-4 w-4" />}
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>{isFullscreen ? 'Exit Fullscreen' : 'Fullscreen'}</TooltipContent>
+            </Tooltip>
+
             {onClose && (
-              <Button variant="outline" size="sm" onClick={onClose}>
-                <IconX className="h-4 w-4" />
-              </Button>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-destructive" onClick={onClose}>
+                    <IconX className="h-4 w-4" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>Close</TooltipContent>
+              </Tooltip>
             )}
-          </div>
+          </TooltipProvider>
         </div>
-      </CardHeader>
+      </div>
 
-      <CardContent className="flex-1 p-0 relative">
+      {/* Editor Container */}
+      <div className="flex-1 w-full h-full relative" style={{ backgroundColor: TERMINAL_THEMES[logTheme].background }}>
         <Editor
-          height={isFullscreen ? 'calc(100dvh - 60px)' : 'calc(100dvh - 255px)'}
+          height="100%"
           theme={`log-theme-${logTheme}`}
           beforeMount={(monaco) => {
-            // Define custom themes for each log theme
             Object.entries(TERMINAL_THEMES).forEach(([key, theme]) => {
               monaco.editor.defineTheme(`log-theme-${key}`, {
                 base: key === 'github' ? 'vs' : 'vs-dark',
                 inherit: true,
-                rules: [
-                  { token: '', foreground: theme.foreground.replace('#', '') },
-                ],
+                rules: [{ token: '', foreground: theme.foreground.replace('#', '') }],
                 colors: {
                   'editor.background': theme.background,
                   'editor.foreground': theme.foreground,
@@ -829,8 +857,7 @@ export function LogViewer({
             wordWrap: wordWrap ? 'on' : 'off',
             lineHeight: 1.7,
             insertSpaces: true,
-            fontFamily:
-              "'Maple Mono',Monaco, 'Cascadia Code', 'Roboto Mono', Consolas, 'Courier New', monospace",
+            fontFamily: "'Maple Mono',Monaco, 'Cascadia Code', 'Roboto Mono', Consolas, 'Courier New', monospace",
             lineNumbers: showLineNumbers ? 'on' : 'off',
             glyphMargin: false,
             folding: false,
@@ -850,13 +877,12 @@ export function LogViewer({
           }}
           loading={
             <div className="flex items-center justify-center h-full">
-              <div className="text-center opacity-60">Loading editor...</div>
+              <div className="text-center opacity-60 text-sm">Loading editor...</div>
             </div>
           }
         />
 
-        {/* Render Log Streamers for each selected container */}
-        {selectPodName && selectPodName !== '_all' && selectedContainers.map(container => (
+        {selectPodName && selectPodName !== '_all' && selectedContainers.map((container) => (
           <LogStreamer
             key={container}
             namespace={namespace}
@@ -876,27 +902,19 @@ export function LogViewer({
             onStatusChange={handleStatusChange}
           />
         )}
+
         {showScrollToBottom && (
           <div
-            className={`absolute bottom-4 right-4 shadow-lg z-10  ml-auto w-fit animate-in fade-in-0 slide-in-from-bottom-2 duration-300 ${logTheme === 'github'
-              ? 'bg-white/90 text-gray-600 border border-gray-200 shadow-sm'
-              : 'bg-gray-800/90 text-gray-300 border border-gray-600 shadow-sm'
-              } px-3 py-1.5 text-xs rounded-full backdrop-blur-sm`}
+            className={`absolute bottom-6 right-6 shadow-lg z-10 w-fit animate-in fade-in-0 slide-in-from-bottom-2 duration-300 ${logTheme === 'github'
+                ? 'bg-white/90 text-gray-600 border border-gray-200'
+                : 'bg-gray-800/90 text-gray-300 border border-gray-600'
+              } px-3 py-1 text-xs rounded-full backdrop-blur-sm cursor-pointer hover:opacity-80 transition-opacity`}
+            onClick={scrollToBottom}
           >
-            <Button
-              size="sm"
-              variant="ghost"
-              className={`h-auto p-0 text-xs font-normal ${logTheme === 'github'
-                ? 'text-gray-600 hover:text-gray-800 hover:bg-gray-100/70'
-                : 'text-gray-300 hover:text-white hover:bg-gray-700/70'
-                }`}
-              onClick={scrollToBottom}
-            >
-              ↓ {t('log.jumpToBottom', 'Jump to bottom')}
-            </Button>
+            ↓ {t('log.jumpToBottom', 'Jump to bottom')}
           </div>
         )}
-      </CardContent>
-    </Card>
+      </div>
+    </div>
   )
 }

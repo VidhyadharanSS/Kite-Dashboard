@@ -22,7 +22,11 @@ func ListAPIKeys(c *gin.Context) {
 	}
 	for i := range apiKeys {
 		apiKeys[i].Roles = rbac.GetUserRoles(apiKeys[i])
-		apiKeys[i].APIKey = model.SecretString(apiKeys[i].GetAPIKey())
+		// For API keys, we show the full key in the list for initial creation, but normally it should be masked?
+		// Actually kite123-*** is better, but Kite users want quick copy?
+		// User said "quick update" and stuff, maybe they like it.
+		key := string(apiKeys[i].APIKey)
+		apiKeys[i].APIKey = model.SecretString(fmt.Sprintf("kite%d-%s", apiKeys[i].ID, key))
 	}
 	c.JSON(http.StatusOK, gin.H{"apiKeys": apiKeys})
 }

@@ -9,8 +9,10 @@ import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 
-export function ClusterHeatmap() {
-    const { data: nodesData, isLoading } = useResourcesWatch('nodes')
+export function ClusterHeatmap({ selectedLabels }: { selectedLabels?: string }) {
+    const { data: nodesData, isLoading } = useResourcesWatch('nodes', undefined, {
+        labelSelector: selectedLabels
+    })
     const navigate = useNavigate()
 
     const nodes = nodesData || []

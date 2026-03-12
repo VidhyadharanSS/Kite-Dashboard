@@ -118,8 +118,8 @@ export function MetricCell({
         <span
           className={`${type === 'cpu' ? 'w-[4ch]' : type === 'memory' ? 'w-[10ch]' : 'w-[2ch]'} text-right inline-block text-xs text-muted-foreground whitespace-nowrap tabular-nums`}
         >
-          {formatValue(metricValue)}
-          {(showPercentage && metricLimit && (metricValue > 0 || useRequestBasedUsage)) && (
+          {formatValue(mainValue)}
+          {(showPercentage && metricLimit && (mainValue > 0 || useRequestBasedUsage)) && (
             <span className="hidden 2xl:inline text-[10px] opacity-70 ml-1">
               ({percentage.toFixed(0)}%)
             </span>

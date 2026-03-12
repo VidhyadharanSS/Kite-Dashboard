@@ -1,4 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
+import { useNamespaceContext } from '@/hooks/use-namespace-context'
+
 import {
   IconLoader,
   IconPlayerPause,
@@ -72,6 +75,9 @@ export function CronJobDetail(props: { namespace: string; name: string }) {
   const [isSavingYaml, setIsSavingYaml] = useState(false)
   const [refreshKey, setRefreshKey] = useState(0)
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
+  const navigate = useNavigate()
+  const { setActiveNamespace } = useNamespaceContext()
+
   const [isTogglingSuspend, setIsTogglingSuspend] = useState(false)
   const [isRunningNow, setIsRunningNow] = useState(false)
   const { t } = useTranslation()
@@ -350,7 +356,16 @@ export function CronJobDetail(props: { namespace: string; name: string }) {
         <div>
           <h1 className="text-lg font-bold">{name}</h1>
           <p className="text-muted-foreground">
-            Namespace: <span className="font-medium">{namespace}</span>
+            Namespace:{' '}
+            <button
+              onClick={() => {
+                setActiveNamespace(namespace)
+                navigate(`/pods?namespace=${namespace}`)
+              }}
+              className="font-medium text-primary hover:underline"
+            >
+              {namespace}
+            </button>
           </p>
         </div>
         <div className="flex gap-2">
@@ -605,17 +620,6 @@ export function CronJobDetail(props: { namespace: string; name: string }) {
             ),
           },
           {
-            value: 'topology',
-            label: 'Topology',
-            content: (
-              <ResourceTopology
-                resource="cronjobs"
-                name={name}
-                namespace={namespace}
-              />
-            ),
-          },
-          {
             value: 'jobs',
             label: (
               <>
@@ -646,11 +650,18 @@ export function CronJobDetail(props: { namespace: string; name: string }) {
             value: 'related',
             label: 'Related',
             content: (
-              <RelatedResourcesTable
-                resource={'cronjobs'}
-                name={name}
-                namespace={namespace}
-              />
+              <div className="space-y-6">
+                <ResourceTopology
+                  resource="cronjobs"
+                  name={name}
+                  namespace={namespace}
+                />
+                <RelatedResourcesTable
+                  resource={'cronjobs'}
+                  name={name}
+                  namespace={namespace}
+                />
+              </div>
             ),
           },
           {

@@ -4,6 +4,7 @@ import { formatHex } from 'culori'
 import * as yaml from 'js-yaml'
 import { editor as monacoEditor } from 'monaco-editor'
 import { useTranslation } from 'react-i18next'
+import { IconRotate2 } from '@tabler/icons-react'
 
 import { Button } from '@/components/ui/button'
 import {
@@ -146,12 +147,15 @@ export function YamlDiffViewer({
                     <Button
                       onClick={() => handleRollbackClick(modified)}
                       disabled={isRollingBack}
-                      variant="outline"
+                      variant="default"
                       size="sm"
                     >
-                      {isRollingBack
-                        ? t('resourceHistory.rollback.rollingBack')
-                        : t('resourceHistory.rollback.modified')}
+                      {isRollingBack ? (
+                        <IconRotate2 className="w-4 h-4 mr-2 animate-spin" />
+                      ) : (
+                        <IconRotate2 className="w-4 h-4 mr-2" />
+                      )}
+                      {t('resourceHistory.rollback.modified')}
                     </Button>
                   )}
 
@@ -160,22 +164,28 @@ export function YamlDiffViewer({
                       <Button
                         onClick={() => handleRollbackClick(original)}
                         disabled={isRollingBack}
-                        variant="outline"
+                        variant="default"
                         size="sm"
                       >
-                        {isRollingBack
-                          ? t('resourceHistory.rollback.rollingBack')
-                          : t('resourceHistory.rollback.previous')}
+                        {isRollingBack ? (
+                          <IconRotate2 className="w-4 h-4 mr-2 animate-spin" />
+                        ) : (
+                          <IconRotate2 className="w-4 h-4 mr-2" />
+                        )}
+                        {t('resourceHistory.rollback.previous')}
                       </Button>
                       <Button
                         onClick={() => handleRollbackClick(modified)}
                         disabled={isRollingBack}
-                        variant="outline"
+                        variant="secondary"
                         size="sm"
                       >
-                        {isRollingBack
-                          ? t('resourceHistory.rollback.rollingBack')
-                          : t('resourceHistory.rollback.modified')}
+                        {isRollingBack ? (
+                          <IconRotate2 className="w-4 h-4 mr-2 animate-spin" />
+                        ) : (
+                          <IconRotate2 className="w-4 h-4 mr-2" />
+                        )}
+                        {t('resourceHistory.rollback.modified')}
                       </Button>
                     </>
                   )}

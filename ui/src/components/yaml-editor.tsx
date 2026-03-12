@@ -10,6 +10,8 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 
 import { useAppearance } from './appearance-provider'
+import { YamlDiffViewer } from './yaml-diff-viewer'
+import { IconAnalyze } from '@tabler/icons-react'
 
 interface YamlEditorProps<T extends ResourceType> {
   /** The YAML content to edit */
@@ -30,6 +32,8 @@ interface YamlEditorProps<T extends ResourceType> {
   onCancel?: () => void
   /** Whether save operation is in progress */
   isSaving?: boolean
+  /** Whether there are unsaved edits (shows a warning banner) */
+  unsaved?: boolean
   /** Custom class name for the card */
   className?: string
 }
@@ -43,6 +47,7 @@ export function YamlEditor<T extends ResourceType>({
   onSave,
   onCancel,
   isSaving = false,
+  unsaved = false,
   className,
 }: YamlEditorProps<T>) {
   const [isEditing, setIsEditing] = useState(true)
@@ -51,6 +56,7 @@ export function YamlEditor<T extends ResourceType>({
   const [validationError, setValidationError] = useState<string>('')
   const { actualTheme, colorTheme } = useAppearance()
   const editorRef = useRef<monacoEditor.IStandaloneCodeEditor | null>(null)
+  const [isDiffVisible, setIsDiffVisible] = useState(false)
   const validationTimeoutRef = useRef<NodeJS.Timeout | null>(null)
 
   const getCardBackgroundColor = () => {
@@ -63,9 +69,15 @@ export function YamlEditor<T extends ResourceType>({
     return formatHex(card) || (actualTheme === 'dark' ? '#18181b' : '#ffffff')
   }
 
-  // Update editor value when value prop changes
+  // Update editor value when value prop changes — but ONLY when the user
+  // has not started editing. Without this guard the YamlEditor's own internal
+  // state would also get reset by background polls, even after the parent-level
+  // isDirty flag is set.
   useEffect(() => {
-    setEditorValue(value)
+    if (!isEditing || editorValue === '') {
+      setEditorValue(value)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [value])
 
   // Validate YAML on content change with debounce for error display
@@ -139,13 +151,29 @@ export function YamlEditor<T extends ResourceType>({
     <Card className={className}>
       <CardHeader className="flex flex-row items-center justify-between">
         <div className="space-y-1">
-          <CardTitle>{title}</CardTitle>
+          <CardTitle className="flex items-center gap-2">
+            {title}
+            {unsaved && (
+              <span className="inline-flex items-center gap-1 text-xs font-normal text-amber-600 dark:text-amber-400 bg-amber-500/10 border border-amber-500/20 rounded px-2 py-0.5">
+                ● Unsaved edits — live updates paused
+              </span>
+            )}
+          </CardTitle>
         </div>
         <div className="flex items-center gap-4">
           {showControls && (
             <div className="flex gap-2">
               {isEditing ? (
                 <>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => setIsDiffVisible(true)}
+                    className="border-amber-500/30 hover:border-amber-500 text-amber-600 dark:text-amber-400"
+                  >
+                    <IconAnalyze className="w-4 h-4 mr-2" />
+                    View Changes
+                  </Button>
                   <Button
                     size="sm"
                     onClick={handleSave}
@@ -257,6 +285,15 @@ export function YamlEditor<T extends ResourceType>({
           </div>
         </div>
       </CardContent>
+
+      <YamlDiffViewer
+        original={value}
+        modified={editorValue}
+        open={isDiffVisible}
+        onOpenChange={setIsDiffVisible}
+        title="Review YAML Changes"
+        height={700}
+      />
     </Card>
   )
 }

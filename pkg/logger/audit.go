@@ -15,12 +15,18 @@ type AuditEntry struct {
 	Namespace string `json:"namespace,omitempty"`
 	Cluster   string `json:"cluster,omitempty"`
 	Timestamp string `json:"timestamp"`
+	Duration  string `json:"duration,omitempty"`
 	Message   string `json:"message"`
 }
 
-func Audit(user, action, resource, namespace, cluster, message string) {
+func Audit(user, action, resource, namespace, cluster, message string, duration ...time.Duration) {
 	if !common.LogEnableAudit || AuditLogger == nil {
 		return
+	}
+
+	durStr := ""
+	if len(duration) > 0 {
+		durStr = duration[0].String()
 	}
 
 	entry := AuditEntry{
@@ -30,6 +36,7 @@ func Audit(user, action, resource, namespace, cluster, message string) {
 		Namespace: namespace,
 		Cluster:   cluster,
 		Timestamp: time.Now().In(time.Local).Format("2006-01-02 15:04:05"),
+		Duration:  durStr,
 		Message:   message,
 	}
 
@@ -38,7 +45,11 @@ func Audit(user, action, resource, namespace, cluster, message string) {
 		fmt.Fprintln(AuditLogger, string(b))
 	} else {
 		// User ssvd performed GET on /api/v1/admin/roles/ at 2026-02-10 23:08:47
-		fmt.Fprintf(AuditLogger, "User %s performed %s on %s in %s/%s at %s: %s\n",
-			entry.User, entry.Action, entry.Resource, entry.Cluster, entry.Namespace, entry.Timestamp, entry.Message)
+		durText := ""
+		if entry.Duration != "" {
+			durText = fmt.Sprintf("in %s ", entry.Duration)
+		}
+		fmt.Fprintf(AuditLogger, "User %s performed %s on %s in %s/%s at %s %s: %s\n",
+			entry.User, entry.Action, entry.Resource, entry.Cluster, entry.Namespace, entry.Timestamp, durText, entry.Message)
 	}
 }
