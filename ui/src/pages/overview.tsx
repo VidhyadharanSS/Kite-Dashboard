@@ -15,6 +15,8 @@ import { QuickActionsWidget } from '@/components/dashboard/quick-actions-widget'
 import { RecentDeploymentsWidget } from '@/components/dashboard/recent-deployments-widget'
 import { FailingPodsWidget } from '@/components/dashboard/failing-pods-widget'
 import { NamespaceHealthWidget } from '@/components/dashboard/namespace-health-widget'
+import { ClusterHealthWidget } from '@/components/dashboard/cluster-health-widget'
+import { AuditStatsWidget } from '@/components/dashboard/audit-stats-widget'
 
 export function Overview() {
   const { t } = useTranslation()
@@ -64,14 +66,14 @@ export function Overview() {
       {!isDismissed &&
         user?.provider !== 'Anonymous' &&
         user?.roles?.some((role) => role.name === 'admin') && <SettingsHint />}
-
-      {/* Live Logs & Quick Actions - Admin tools first */}
-      <div className="grid grid-cols-1 gap-4 @5xl/main:grid-cols-2">
+{/* Cluster health + quick actions row */}
+      <div className="grid grid-cols-1 gap-4 @5xl/main:grid-cols-3">
+        <ClusterHealthWidget />
         {canAccess('nodes', 'get') && <LiveLogWidget />}
         <QuickActionsWidget />
       </div>
 
-      {/* Resource Usage & Recent Events */}
+      {/* Resource charts + events */}
       <div className="grid grid-cols-1 gap-4 @5xl/main:grid-cols-2">
         <ResourceCharts
           data={overview?.resource}
@@ -82,13 +84,15 @@ export function Overview() {
         <RecentEvents />
       </div>
 
-      {/* Workload Status */}
+      {/* Failing pods + deployments + namespace health */}
       <div className="grid grid-cols-1 gap-4 @5xl/main:grid-cols-3">
         {canAccess('pods', 'list') && <FailingPodsWidget />}
         {canAccess('deployments', 'list') && <RecentDeploymentsWidget />}
         {canAccess('pods', 'list') && <NamespaceHealthWidget />}
       </div>
 
+      {/* Audit activity stats (admin only) */}
+      <AuditStatsWidget />
       {/* CPU/Memory Charts if Prometheus enabled */}
       {overview?.prometheusEnabled && (
         <div className="grid grid-cols-1 gap-4 @5xl/main:grid-cols-2">

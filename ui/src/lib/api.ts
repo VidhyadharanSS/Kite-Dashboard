@@ -1656,6 +1656,131 @@ export const useAuditLogs = (
   })
 }
 
+// User-accessible audit logs endpoint (non-admin users see only their own entries)
+export const fetchUserAuditLogs = async (
+  page = 1,
+  size = 50,
+  operation?: string,
+  cluster?: string,
+  search?: string
+): Promise<AuditLogResponse> => {
+  const params = new URLSearchParams({
+    page: String(page),
+    size: String(size),
+  })
+  if (operation) params.set('operation', operation)
+  if (cluster) params.set('cluster', cluster)
+  if (search) params.set('search', search)
+  return fetchAPI<AuditLogResponse>(`/audit-logs?${params.toString()}`)
+}
+
+export const useUserAuditLogs = (
+  page = 1,
+  size = 50,
+  operation?: string,
+  cluster?: string,
+  search?: string,
+  options?: { staleTime?: number; refetchInterval?: number; enabled?: boolean }
+) => {
+  return useQuery<AuditLogResponse, Error>({
+    queryKey: ['user-audit-logs', page, size, operation, cluster, search],
+    queryFn: () => fetchUserAuditLogs(page, size, operation, cluster, search),
+    staleTime: options?.staleTime || 20000,
+    refetchInterval: options?.refetchInterval,
+    enabled: options?.enabled,
+  })
+}
+
+// Cluster health score
+export interface ClusterHealthScore {
+  score: number
+  grade: string
+  nodeHealth: { total: number; healthy: number; score: number }
+  podHealth: { total: number; healthy: number; score: number }
+  warningEvents: number
+  resourcePressure: {
+    cpuPressure: boolean
+    memoryPressure: boolean
+    diskPressure: boolean
+    pidPressure: boolean
+    cpuUsagePct: number
+    memUsagePct: number
+  }
+  issues: { severity: string; message: string; resource?: string }[]
+}
+
+export const fetchClusterHealth = (): Promise<ClusterHealthScore> => {
+  return fetchAPI<ClusterHealthScore>('/cluster-health')
+}
+
+export const useClusterHealth = (options?: { enabled?: boolean; staleTime?: number }) => {
+  return useQuery<ClusterHealthScore, Error>({
+    queryKey: ['cluster-health'],
+    queryFn: fetchClusterHealth,
+    staleTime: options?.staleTime || 30000,
+    refetchInterval: 60000,
+    enabled: options?.enabled,
+  })
+}
+
+// Audit log stats (admin only)
+export interface AuditLogStatsResponse {
+  totalActions: number
+  successCount: number
+  failureCount: number
+  operationCounts: Record<string, number>
+  topOperators: { username: string; count: number }[]
+  recentActivity: { date: string; count: number }[]
+}
+
+export const fetchAuditLogStats = (days = 7): Promise<AuditLogStatsResponse> => {
+  return fetchAPI<AuditLogStatsResponse>(`/admin/audit-logs/stats?days=${days}`)
+}
+
+export const useAuditLogStats = (days = 7, options?: { enabled?: boolean }) => {
+  return useQuery<AuditLogStatsResponse, Error>({
+    queryKey: ['audit-log-stats', days],
+    queryFn: () => fetchAuditLogStats(days),
+    staleTime: 60000,
+    enabled: options?.enabled,
+  })
+}
+
+// Bulk operations
+export interface BulkResourceItem {
+  resourceType: string
+  namespace: string
+  name: string
+}
+
+export interface BulkOperationResult {
+  resourceType: string
+  namespace: string
+  name: string
+  success: boolean
+  error?: string
+}
+
+export interface BulkOperationResponse {
+  results: BulkOperationResult[]
+  total: number
+  successCount: number
+  failureCount: number
+}
+
+export const bulkRestart = async (
+  resources: BulkResourceItem[]
+): Promise<BulkOperationResponse> => {
+  return apiClient.post<BulkOperationResponse>('/bulk/restart', { resources })
+}
+
+export const bulkDelete = async (
+  resources: BulkResourceItem[],
+  force = false
+): Promise<BulkOperationResponse> => {
+  return apiClient.post<BulkOperationResponse>('/bulk/delete', { resources, force })
+}
+
 // Resource History API
 export const fetchResourceHistory = (
   resourceType: string,

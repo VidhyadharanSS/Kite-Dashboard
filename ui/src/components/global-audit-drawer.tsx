@@ -1,14 +1,16 @@
 /**
  * GlobalAuditDrawer — Cluster-wide activity feed accessible from the site header.
  *
- * Shows recent resource changes made through Kite (powered by the existing /api/audit endpoint).
- * Filterable by operation type and namespace. Clicking any entry navigates to the resource.
+ * Shows recent resource changes made through Kite (powered by the /api/v1/audit-logs endpoint).
+ * Admins see all changes; non-admins see only their own.
+ * Filterable by operation type. Clicking any entry navigates to the resource.
  */
 import { useMemo, useState } from 'react'
 import {
     IconAlertCircle,
     IconCheck,
     IconClock,
+    IconDownload,
     IconFilter,
     IconHistory,
     IconRefresh,
@@ -17,8 +19,10 @@ import {
 import { formatDistanceToNow } from 'date-fns'
 import { useNavigate } from 'react-router-dom'
 
-import { useAuditLogs } from '@/lib/api'
+import { useUserAuditLogs } from '@/lib/api'
+import { useAuth } from '@/contexts/auth-context'
 import { Button } from '@/components/ui/button'
+import { Badge } from '@/components/ui/badge'
 import {
     Sheet,
     SheetContent,
@@ -27,6 +31,7 @@ import {
     SheetTrigger,
 } from '@/components/ui/sheet'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
+import { withSubPath } from '@/lib/subpath'
 
 const RESOURCE_TO_ROUTE: Record<string, string> = {
     pods: 'pods',
@@ -70,21 +75,29 @@ const OP_COLORS: Record<string, string> = {
     patch: 'bg-sky-500/15 text-sky-600 border-sky-500/20',
     delete: 'bg-destructive/15 text-destructive border-destructive/20',
     apply: 'bg-violet-500/15 text-violet-600 border-violet-500/20',
+    restart: 'bg-amber-500/15 text-amber-600 border-amber-500/20',
 }
 
 export function GlobalAuditDrawer() {
     const navigate = useNavigate()
+    const { user } = useAuth()
     const [isOpen, setIsOpen] = useState(false)
     const [opFilter, setOpFilter] = useState<string>('all')
 
-    const { data, isLoading, refetch } = useAuditLogs(
-        1, 50, undefined, undefined,
+    // Use the user-accessible audit endpoint (works for both admin and non-admin users)
+    const { data, isLoading, error, refetch } = useUserAuditLogs(
+        1, 50,
         opFilter === 'all' ? undefined : opFilter,
-        undefined, undefined, undefined, undefined,
-        { refetchInterval: isOpen ? 30000 : 0 }
+        undefined,
+        undefined,
+        { refetchInterval: isOpen ? 30000 : 0, enabled: isOpen }
     )
 
     const entries = useMemo(() => data?.data ?? [], [data])
+    const isAdmin = user?.isAdmin?.() ?? false
+
+    const failureCount = useMemo(() =>
+        entries.filter(e => !e.success).length, [entries])
 
     return (
         <Sheet open={isOpen} onOpenChange={setIsOpen}>
@@ -92,12 +105,19 @@ export function GlobalAuditDrawer() {
                 <TooltipProvider>
                     <Tooltip>
                         <TooltipTrigger asChild>
-                            <Button variant="ghost" size="icon" className="h-8 w-8">
+                            <Button variant="ghost" size="icon" className="relative h-8 w-8">
                                 <IconHistory className="h-4 w-4" />
+                                {failureCount > 0 && isOpen && (
+                                    <span className="absolute -top-0.5 -right-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-destructive text-[10px] font-bold text-destructive-foreground leading-none">
+                                        {failureCount > 9 ? '9+' : failureCount}
+                                    </span>
+                                )}
                                 <span className="sr-only">Audit Log</span>
                             </Button>
                         </TooltipTrigger>
-                        <TooltipContent side="bottom">Recent Changes (Audit Log)</TooltipContent>
+                        <TooltipContent side="bottom">
+                            {isAdmin ? 'Recent Changes (Audit Log)' : 'My Recent Changes'}
+                        </TooltipContent>
                     </Tooltip>
                 </TooltipProvider>
             </SheetTrigger>
@@ -107,15 +127,41 @@ export function GlobalAuditDrawer() {
                     <div className="flex items-center justify-between">
                         <SheetTitle className="flex items-center gap-2 text-sm font-semibold">
                             <IconHistory className="h-4 w-4" />
-                            Audit Log
+                            {isAdmin ? 'Audit Log' : 'My Changes'}
                             <span className="text-muted-foreground font-normal text-xs">
                                 {data?.total ? `${data.total} total` : ''}
                             </span>
+                            {!isAdmin && (
+                                <Badge variant="secondary" className="text-[10px] font-normal">
+                                    personal
+                                </Badge>
+                            )}
                         </SheetTitle>
-                        <Button variant="ghost" size="icon" className="h-7 w-7"
-                            onClick={() => refetch()} disabled={isLoading}>
-                            <IconRefresh className={`h-3.5 w-3.5 ${isLoading ? 'animate-spin' : ''}`} />
-                        </Button>
+                        <div className="flex items-center gap-1">
+                            {isAdmin && (
+                                <TooltipProvider>
+                                    <Tooltip>
+                                        <TooltipTrigger asChild>
+                                            <Button
+                                                variant="ghost"
+                                                size="icon"
+                                                className="h-7 w-7"
+                                                onClick={() => {
+                                                    window.open(withSubPath('/api/v1/admin/audit-logs/export?days=30'), '_blank')
+                                                }}
+                                            >
+                                                <IconDownload className="h-3.5 w-3.5" />
+                                            </Button>
+                                        </TooltipTrigger>
+                                        <TooltipContent>Export as CSV</TooltipContent>
+                                    </Tooltip>
+                                </TooltipProvider>
+                            )}
+                            <Button variant="ghost" size="icon" className="h-7 w-7"
+                                onClick={() => refetch()} disabled={isLoading}>
+                                <IconRefresh className={`h-3.5 w-3.5 ${isLoading ? 'animate-spin' : ''}`} />
+                            </Button>
+                        </div>
                     </div>
                 </SheetHeader>
 
@@ -143,6 +189,16 @@ export function GlobalAuditDrawer() {
                     </div>
                 </div>
 
+                {/* Error message */}
+                {error && (
+                    <div className="px-4 py-3 bg-destructive/10 text-destructive text-xs border-b">
+                        <div className="flex items-center gap-2">
+                            <IconAlertCircle className="h-3.5 w-3.5 shrink-0" />
+                            <span>Failed to load audit logs: {error.message}</span>
+                        </div>
+                    </div>
+                )}
+
                 {/* Entry list */}
                 <div className="flex-1 overflow-y-auto">
                     {isLoading && entries.length === 0 ? (
@@ -151,10 +207,11 @@ export function GlobalAuditDrawer() {
                                 <div key={i} className="h-14 bg-muted animate-pulse rounded-md" />
                             ))}
                         </div>
-                    ) : entries.length === 0 ? (
+                    ) : entries.length === 0 && !error ? (
                         <div className="flex flex-col items-center justify-center h-40 text-muted-foreground gap-2">
                             <IconHistory className="h-8 w-8 opacity-30" />
                             <p className="text-sm">No audit entries</p>
+                            <p className="text-xs">Resource changes will appear here</p>
                         </div>
                     ) : (
                         <div className="divide-y">
@@ -202,6 +259,11 @@ export function GlobalAuditDrawer() {
                                                         {entry.clusterName && <span>· {entry.clusterName}</span>}
                                                     </div>
                                                 )}
+                                                {!entry.success && entry.errorMessage && (
+                                                    <div className="mt-1 text-[10px] text-destructive truncate">
+                                                        {entry.errorMessage}
+                                                    </div>
+                                                )}
                                             </div>
                                         </div>
                                     </button>
@@ -211,8 +273,9 @@ export function GlobalAuditDrawer() {
                     )}
                 </div>
 
-                <div className="px-4 py-2 border-t text-xs text-muted-foreground shrink-0">
-                    Showing {entries.length} of {data?.total ?? 0} entries · refreshes every 30s
+                <div className="px-4 py-2 border-t text-xs text-muted-foreground shrink-0 flex items-center justify-between">
+                    <span>Showing {entries.length} of {data?.total ?? 0} entries</span>
+                    <span>refreshes every 30s</span>
                 </div>
             </SheetContent>
         </Sheet>

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { IconAlertCircle, IconEye } from '@tabler/icons-react'
+import { IconAlertCircle, IconEye, IconDownload } from '@tabler/icons-react'
 import {
   ColumnDef,
   getCoreRowModel,
@@ -11,6 +11,7 @@ import { useTranslation } from 'react-i18next'
 import { ResourceHistory } from '@/types/api'
 import { useAuditLogs, useClusterList, useUserList } from '@/lib/api'
 import { formatDate } from '@/lib/utils'
+import { withSubPath } from '@/lib/subpath'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -283,8 +284,7 @@ export function AuditLog() {
 
   return (
     <Card>
-      <CardHeader>
-        <div className="flex items-center justify-between">
+      <CardHeader<div className="flex items-center justify-between">
           <div>
             <CardTitle>{t('auditLog.title', 'Audit Logs')}</CardTitle>
             <p className="text-muted-foreground text-sm">
@@ -295,6 +295,24 @@ export function AuditLog() {
             </p>
           </div>
           <div className="flex items-center gap-3">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                const params = new URLSearchParams()
+                if (operationFilter) params.set('operation', operationFilter)
+                if (clusterFilter) params.set('cluster', clusterFilter)
+                if (searchQuery) params.set('search', searchQuery)
+                params.set('days', '30')
+                window.open(
+                  withSubPath(`/api/v1/admin/audit-logs/export?${params.toString()}`),
+                  '_blank'
+                )
+              }}
+            >
+              <IconDownload className="w-4 h-4 mr-1" />
+              {t('auditLog.export', 'Export CSV')}
+            </Button>
             <Input
               placeholder={t(
                 'auditLog.filters.search',
