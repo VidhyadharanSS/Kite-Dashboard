@@ -1,10 +1,18 @@
 import { useMemo } from 'react'
-import { IconAlertTriangle, IconInfoCircle, IconX } from '@tabler/icons-react'
+import { useAuth } from '@/contexts/auth-context'
+import {
+  IconAlertTriangle,
+  IconClipboardList,
+  IconInfoCircle,
+  IconX,
+} from '@tabler/icons-react'
 import { formatDistanceToNow } from 'date-fns'
 import { useTranslation } from 'react-i18next'
+import { Link } from 'react-router-dom'
 
 import { useResources } from '@/lib/api'
 import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
 import {
   Card,
   CardContent,
@@ -15,6 +23,7 @@ import {
 
 export function RecentEvents() {
   const { t } = useTranslation()
+  const { user } = useAuth()
   const { data, isLoading } = useResources('events', undefined, {
     limit: 20,
   })
@@ -95,8 +104,20 @@ export function RecentEvents() {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>{t('overview.recentEvents')}</CardTitle>
-        <CardDescription>Latest cluster events</CardDescription>
+        <div className="flex items-center justify-between">
+          <div>
+            <CardTitle>{t('overview.recentEvents')}</CardTitle>
+            <CardDescription>Latest cluster events</CardDescription>
+          </div>
+          {user?.isAdmin() && (
+            <Button variant="outline" size="sm" asChild>
+              <Link to="/audit-log" className="flex items-center gap-1.5">
+                <IconClipboardList className="size-4" />
+                Audit Log
+              </Link>
+            </Button>
+          )}
+        </div>
       </CardHeader>
       <CardContent>
         <div className="max-h-72 overflow-y-auto scrollbar-hide">

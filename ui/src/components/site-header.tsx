@@ -1,11 +1,17 @@
 import { useAuth } from '@/contexts/auth-context'
-import { Settings } from 'lucide-react'
+import { ClipboardList, Settings } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 
 import { useIsMobile } from '@/hooks/use-mobile'
 import { Button } from '@/components/ui/button'
 import { Separator } from '@/components/ui/separator'
 import { SidebarTrigger } from '@/components/ui/sidebar'
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip'
 
 import { CreateResourceDialog } from './create-resource-dialog'
 import { DynamicBreadcrumb } from './dynamic-breadcrumb'
@@ -42,15 +48,40 @@ export function SiteHeader() {
                   className="mx-2 data-[orientation=vertical]:h-4"
                 />
                 {user?.isAdmin() && (
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={() => navigate('/settings')}
-                    className="hidden sm:flex"
-                  >
-                    <Settings className="h-5 w-5" />
-                    <span className="sr-only">Settings</span>
-                  </Button>
+                  <>
+                    <TooltipProvider>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => navigate('/audit-log')}
+                            className="hidden sm:flex"
+                          >
+                            <ClipboardList className="h-5 w-5" />
+                            <span className="sr-only">Audit Log</span>
+                          </Button>
+                        </TooltipTrigger>
+                        <TooltipContent>Audit Log</TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
+                    <TooltipProvider>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => navigate('/settings')}
+                            className="hidden sm:flex"
+                          >
+                            <Settings className="h-5 w-5" />
+                            <span className="sr-only">Settings</span>
+                          </Button>
+                        </TooltipTrigger>
+                        <TooltipContent>Settings</TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
+                  </>
                 )}
                 <LanguageToggle />
                 <ModeToggle />

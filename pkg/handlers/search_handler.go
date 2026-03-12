@@ -3,6 +3,7 @@ package handlers
 import (
 	"fmt"
 	"net/http"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -123,39 +124,23 @@ func getResourceOrder(resourceType string) int {
 }
 
 // sortResults sorts the search results with exact matches first, then by resource type
+// Uses O(n log n) sort.Slice instead of O(n²) bubble sort for efficiency
 func sortResults(results []common.SearchResult, query string) {
-	var exactMatches, partialMatches []common.SearchResult
+	sort.Slice(results, func(i, j int) bool {
+		iExact := strings.ToLower(results[i].Name) == query
+		jExact := strings.ToLower(results[j].Name) == query
 
-	for _, result := range results {
-		if strings.ToLower(result.Name) == query {
-			exactMatches = append(exactMatches, result)
-		} else {
-			partialMatches = append(partialMatches, result)
+		// Exact matches come first
+		if iExact != jExact {
+			return iExact
 		}
-	}
-
-	// sort by resources
-	sortByResources := func(a, b common.SearchResult) bool {
-		return getResourceOrder(a.ResourceType) < getResourceOrder(b.ResourceType)
-	}
-
-	// Simple bubble sort for demonstration
-	for i := 0; i < len(exactMatches)-1; i++ {
-		for j := 0; j < len(exactMatches)-i-1; j++ {
-			if !sortByResources(exactMatches[j], exactMatches[j+1]) {
-				exactMatches[j], exactMatches[j+1] = exactMatches[j+1], exactMatches[j]
-			}
+		// Then sort by resource type priority
+		iOrder := getResourceOrder(results[i].ResourceType)
+		jOrder := getResourceOrder(results[j].ResourceType)
+		if iOrder != jOrder {
+			return iOrder < jOrder
 		}
-	}
-
-	for i := 0; i < len(partialMatches)-1; i++ {
-		for j := 0; j < len(partialMatches)-i-1; j++ {
-			if !sortByResources(partialMatches[j], partialMatches[j+1]) {
-				partialMatches[j], partialMatches[j+1] = partialMatches[j+1], partialMatches[j]
-			}
-		}
-	}
-
-	// Combine results
-	copy(results, append(exactMatches, partialMatches...))
+		// Finally sort alphabetically by name
+		return results[i].Name < results[j].Name
+	})
 }

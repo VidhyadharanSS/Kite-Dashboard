@@ -50,9 +50,71 @@ func AuditLogger() gin.HandlerFunc {
 			level = "WARN"
 		}
 
+		// Write to log file (backwards compatible)
 		logx.Activity("[%s] Cluster:%s | User:%s | %s | Status:%d",
 			level, cluster, userIdentity, activity, statusCode)
+
+		// Persist to database for UI querying
+		resource, namespace := extractResourceInfo(path)
+		auditEntry := &model.AuditLog{
+			Level:     level,
+			Cluster:   cluster,
+			Username:  userIdentity,
+			Action:    activity,
+			Resource:  resource,
+			Namespace: namespace,
+			Status:    statusCode,
+			Method:    method,
+			Path:      path,
+		}
+		// Insert asynchronously to not block the response
+		go func() {
+			if err := model.CreateAuditLog(auditEntry); err != nil {
+				logx.Error("Failed to persist audit log: %v", err)
+			}
+		}()
 	}
+}
+
+// extractResourceInfo parses the URL path to extract resource type and namespace
+func extractResourceInfo(path string) (resource, namespace string) {
+	cleanPath := path
+	if idx := strings.Index(cleanPath, "?"); idx != -1 {
+		cleanPath = cleanPath[:idx]
+	}
+	parts := strings.Split(strings.Trim(cleanPath, "/"), "/")
+
+	// api/v1/{resource}/{namespace}/{name} or api/v1/admin/{resource}/...
+	if len(parts) >= 3 && parts[0] == "api" && parts[1] == "v1" {
+		remaining := parts[2:]
+		if len(remaining) > 0 && remaining[0] == "admin" {
+			if len(remaining) > 1 {
+				return remaining[1], ""
+			}
+			return "admin", ""
+		}
+		if len(remaining) >= 1 {
+			resource = remaining[0]
+		}
+		if len(remaining) >= 2 && remaining[1] != "_all" {
+			namespace = remaining[1]
+		}
+		return resource, namespace
+	}
+
+	// Terminal, logs, etc.
+	for _, prefix := range []string{"terminal", "node-terminal", "logs"} {
+		if strings.Contains(path, "/"+prefix+"/") {
+			for i, part := range parts {
+				if part == prefix && i+1 < len(parts) {
+					return prefix, parts[i+1]
+				}
+			}
+			return prefix, ""
+		}
+	}
+
+	return "", ""
 }
 
 func shouldLogUserActivity(method, path string) bool {

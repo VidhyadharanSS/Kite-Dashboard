@@ -1,12 +1,17 @@
 import { useEffect, useState } from 'react'
-import { IconLoader, IconRefresh, IconTrash } from '@tabler/icons-react'
+import {
+  IconDownload,
+  IconLoader,
+  IconRefresh,
+  IconTrash,
+} from '@tabler/icons-react'
 import * as yaml from 'js-yaml'
 import { useTranslation } from 'react-i18next'
 import { Link } from 'react-router-dom'
 import { toast } from 'sonner'
 
 import { ResourceType, ResourceTypeMap } from '@/types/api'
-import { updateResource, useResource } from '@/lib/api'
+import { updateResource, useResource, exportResource } from '@/lib/api'
 import { getOwnerInfo } from '@/lib/k8s'
 import { formatDate, translateError } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
@@ -119,6 +124,14 @@ export function SimpleResourceDetail<T extends ResourceType>(props: {
           >
             <IconRefresh className="w-4 h-4" />
             Refresh
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => exportResource(resourceType, name, namespace)}
+          >
+            <IconDownload className="w-4 h-4" />
+            Export
           </Button>
           <DescribeDialog
             resourceType={resourceType}

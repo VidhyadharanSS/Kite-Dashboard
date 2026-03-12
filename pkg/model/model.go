@@ -69,13 +69,17 @@ func InitDB() {
 		panic("database connection is nil, check your DB_TYPE and DB_DSN settings")
 	}
 
-	// For SQLite we must enable foreign key enforcement explicitly.
-	// SQLite has foreign key constraints defined in the schema but they are
-	// not enforced unless PRAGMA foreign_keys = ON is set on the connection.
+	// For SQLite: enable foreign keys and WAL mode for better concurrency
 	if common.DBType == "sqlite" {
 		if err := DB.Exec("PRAGMA foreign_keys = ON").Error; err != nil {
 			panic("failed to enable sqlite foreign keys: " + err.Error())
 		}
+		// WAL mode allows concurrent readers while writing, significantly
+		// improving performance for the audit log writes + dashboard reads
+		DB.Exec("PRAGMA journal_mode = WAL")
+		DB.Exec("PRAGMA synchronous = NORMAL")
+		DB.Exec("PRAGMA cache_size = -8000") // 8MB cache
+		DB.Exec("PRAGMA busy_timeout = 5000") // 5s busy timeout
 	}
 	models := []interface{}{
 		User{},
@@ -84,6 +88,7 @@ func InitDB() {
 		Role{},
 		RoleAssignment{},
 		ResourceHistory{},
+		AuditLog{},
 	}
 	for _, model := range models {
 		err = DB.AutoMigrate(model)
@@ -95,6 +100,10 @@ func InitDB() {
 	if err := (&ResourceHistory{}).AfterMigrate(DB); err != nil {
 		panic("failed to create resource history indexes: " + err.Error())
 	}
+
+	// Create indexes for audit_logs for efficient querying
+	DB.Exec(`CREATE INDEX IF NOT EXISTS idx_audit_logs_created_at ON audit_logs (created_at DESC)`)
+	DB.Exec(`CREATE INDEX IF NOT EXISTS idx_audit_logs_lookup ON audit_logs (cluster, username, level, created_at DESC)`)
 
 	sqldb, err := DB.DB()
 	if err == nil {

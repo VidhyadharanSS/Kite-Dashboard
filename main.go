@@ -205,6 +205,13 @@ func setupAPIRouter(r *gin.RouterGroup, cm *cluster.ClusterManager) {
 			apiKeyAPI.POST("/", handlers.CreateAPIKey)
 			apiKeyAPI.DELETE("/:id", handlers.DeleteAPIKey)
 		}
+
+		auditAPI := adminAPI.Group("/audit-logs")
+		{
+			auditAPI.GET("/", handlers.ListAuditLogs)
+			auditAPI.GET("/stats", handlers.GetAuditLogStats)
+			auditAPI.DELETE("/purge", handlers.PurgeAuditLogs)
+		}
 	}
 
 	api := r.Group("/api/v1")
@@ -237,6 +244,9 @@ func setupAPIRouter(r *gin.RouterGroup, cm *cluster.ClusterManager) {
 
 		proxyHandler := handlers.NewProxyHandler()
 		proxyHandler.RegisterRoutes(api)
+
+		// Resource export endpoint (before RBAC to apply its own checks)
+		api.GET("/export/:resource/:namespace/:name", handlers.ExportResource)
 
 		api.Use(middleware.RBACMiddleware())
 		resources.RegisterRoutes(api)
@@ -278,6 +288,20 @@ func main() {
 	model.InitDB()
 	rbac.InitRBAC()
 	internal.LoadConfigFromEnv()
+
+	// Start background audit log cleanup (purge entries older than 90 days, runs daily)
+	go func() {
+		ticker := time.NewTicker(24 * time.Hour)
+		defer ticker.Stop()
+		for range ticker.C {
+			deleted, err := model.PurgeAuditLogs(90)
+			if err != nil {
+				klog.Warningf("Failed to purge old audit logs: %v", err)
+			} else if deleted > 0 {
+				klog.Infof("Purged %d audit log entries older than 90 days", deleted)
+			}
+		}
+	}()
 
 	cm, err := cluster.NewClusterManager()
 	if err != nil {

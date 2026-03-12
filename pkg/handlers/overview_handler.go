@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"net/http"
+	"sync"
 
 	"github.com/gin-gonic/gin"
 	"github.com/zxh326/kite/pkg/cluster"
@@ -30,12 +31,38 @@ func GetOverview(c *gin.Context) {
 	user := c.MustGet("user").(model.User)
 	if len(user.Roles) == 0 {
 		c.JSON(http.StatusForbidden, gin.H{"error": "Access denied"})
+		return
 	}
 
-	// Get nodes
-	nodes := &v1.NodeList{}
-	if err := cs.K8sClient.List(ctx, nodes, &client.ListOptions{}); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+	// Fetch all 4 resource lists concurrently for much better latency
+	var (
+		nodes      = &v1.NodeList{}
+		pods       = &v1.PodList{}
+		namespaces = &v1.NamespaceList{}
+		services   = &v1.ServiceList{}
+		wg         sync.WaitGroup
+		mu         sync.Mutex
+		errs       []string
+	)
+
+	fetchList := func(obj client.ObjectList, label string) {
+		defer wg.Done()
+		if err := cs.K8sClient.List(ctx, obj, &client.ListOptions{}); err != nil {
+			mu.Lock()
+			errs = append(errs, label+": "+err.Error())
+			mu.Unlock()
+		}
+	}
+
+	wg.Add(4)
+	go fetchList(nodes, "nodes")
+	go fetchList(pods, "pods")
+	go fetchList(namespaces, "namespaces")
+	go fetchList(services, "services")
+	wg.Wait()
+
+	if len(errs) > 0 {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": errs[0]})
 		return
 	}
 
@@ -52,13 +79,6 @@ func GetOverview(c *gin.Context) {
 				break
 			}
 		}
-	}
-
-	// Get pods
-	pods := &v1.PodList{}
-	if err := cs.K8sClient.List(ctx, pods, &client.ListOptions{}); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-		return
 	}
 
 	runningPods := 0
@@ -81,19 +101,6 @@ func GetOverview(c *gin.Context) {
 		}
 	}
 
-	// Get namespaces
-	namespaces := &v1.NamespaceList{}
-	if err := cs.K8sClient.List(ctx, namespaces, &client.ListOptions{}); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-		return
-	}
-
-	// Get services
-	services := &v1.ServiceList{}
-	if err := cs.K8sClient.List(ctx, services, &client.ListOptions{}); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-		return
-	}
 	overview := OverviewData{
 		TotalNodes:      len(nodes.Items),
 		ReadyNodes:      readyNodes,

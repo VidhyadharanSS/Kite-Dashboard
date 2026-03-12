@@ -594,6 +594,45 @@
       "currentScheduled": "Current Scheduled"
     }
   },
+  "auditLog": {
+    "title": "Audit Log",
+    "description": "Track all user activities and system events across clusters",
+    "totalEntries": "Total Entries",
+    "todayEntries": "Today",
+    "warnings": "Warnings",
+    "errors": "Errors",
+    "filters": "Filters",
+    "clearFilters": "Clear Filters",
+    "allLevels": "All Levels",
+    "filterByUsername": "Filter by username...",
+    "filterByAction": "Filter by action...",
+    "filterByResource": "Filter by resource...",
+    "exportCSV": "Export CSV",
+    "purgeOld": "Purge Old",
+    "purgeConfirm": "Are you sure you want to purge audit logs older than 90 days?",
+    "noEntries": "No audit log entries found",
+    "time": "Time",
+    "level": "Level",
+    "method": "Method",
+    "user": "User",
+    "cluster": "Cluster",
+    "action": "Action",
+    "resource": "Resource",
+    "status": "Status"
+  },
+  "export": {
+    "title": "Export",
+    "yaml": "Export YAML",
+    "json": "Export JSON",
+    "success": "Resource exported successfully",
+    "error": "Failed to export resource"
+  },
+  "clusterHealth": {
+    "healthy": "Healthy",
+    "degraded": "Degraded",
+    "critical": "Critical",
+    "unknown": "Unknown"
+  },
   "deleteConfirmation": {
     "title": "Delete {{type}}",
     "description": "This action cannot be undone.",

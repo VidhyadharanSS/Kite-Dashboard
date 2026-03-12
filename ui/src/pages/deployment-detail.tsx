@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import {
+  IconDownload,
   IconLoader,
   IconRefresh,
   IconReload,
@@ -13,6 +14,7 @@ import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
 
 import {
+  exportResource,
   patchResource,
   updateResource,
   useResource,
@@ -263,10 +265,17 @@ export function DeploymentDetail(props: { namespace: string; name: string }) {
             Namespace: <span className="font-medium">{namespace}</span>
           </p>
         </div>
-        <div className="flex gap-2">
-          <Button variant="outline" size="sm" onClick={handleRefresh}>
+        <div className="flex gap-2"<Button variant="outline" size="sm" onClick={handleRefresh}>
             <IconRefresh className="w-4 h-4" />
             Refresh
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => exportResource('deployments', name, namespace)}
+          >
+            <IconDownload className="w-4 h-4" />
+            Export
           </Button>
           <DescribeDialog
             resourceType="deployments"

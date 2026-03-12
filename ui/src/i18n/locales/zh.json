@@ -550,6 +550,23 @@
       "assignRoles": "分配角色"
     }
   },
+  "auditLog": {
+    "title": "审计日志",
+    "description": "跟踪所有用户活动和跨集群的系统事件"
+  },
+  "export": {
+    "title": "导出",
+    "yaml": "导出 YAML",
+    "json": "导出 JSON",
+    "success": "资源导出成功",
+    "error": "导出资源失败"
+  },
+  "clusterHealth": {
+    "healthy": "健康",
+    "degraded": "降级",
+    "critical": "严重",
+    "unknown": "未知"
+  },
   "deleteConfirmation": {
     "title": "删除{{type}}",
     "description": "此操作无法撤销。",

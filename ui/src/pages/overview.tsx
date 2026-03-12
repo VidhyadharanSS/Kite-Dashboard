@@ -5,6 +5,7 @@ import { useTranslation } from 'react-i18next'
 import { useOverview, useResourceUsageHistory } from '@/lib/api'
 import NetworkUsageChart from '@/components/chart/network-usage-chart'
 import ResourceUtilizationChart from '@/components/chart/resource-utilization'
+import { ClusterHealthBadge } from '@/components/cluster-health-badge'
 import { ClusterStatsCards } from '@/components/cluster-stats-cards'
 import { RecentEvents } from '@/components/recent-events'
 import { ResourceCharts } from '@/components/resources-charts'
@@ -45,8 +46,9 @@ export function Overview() {
 
   return (
     <div className="flex flex-col gap-6">
-      <div>
+      <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold">{t('overview.title')}</h1>
+        <ClusterHealthBadge overview={overview} isLoading={isLoading} />
       </div>
 
       <ClusterStatsCards stats={overview} isLoading={isLoading} />

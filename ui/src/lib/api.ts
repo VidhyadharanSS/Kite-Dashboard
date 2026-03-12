@@ -1528,3 +1528,120 @@ export const deleteAPIKey = async (
 ): Promise<{ message: string }> => {
   return await apiClient.delete<{ message: string }>(`/admin/apikeys/${id}`)
 }
+// ========================================
+// Resource Export API
+// ========================================
+
+/**
+ * Export a resource as YAML or JSON, triggering a browser download
+ */
+export const exportResource = async (
+  resource: string,
+  name: string,
+  namespace?: string,
+  format: 'yaml' | 'json' = 'yaml'
+): Promise<void> => {
+  const ns = namespace || '_all'
+  const endpoint = `${API_BASE_URL}/export/${resource}/${ns}/${name}?format=${format}`
+
+  const currentCluster = localStorage.getItem('current-cluster')
+  const headers: Record<string, string> = {}
+  if (currentCluster) {
+    headers['x-cluster-name'] = currentCluster
+  }
+
+  try {
+    const response = await fetch(endpoint, {
+      credentials: 'include',
+      headers,
+    })
+
+    if (!response.ok) {
+      throw new Error(`Export failed: ${response.statusText}`)
+    }
+
+    const blob = await response.blob()
+    const url = URL.createObjectURL(blob)
+    const filename =
+      namespace && namespace !== '_all'
+        ? `${resource}-${namespace}-${name}.${format}`
+        : `${resource}-${name}.${format}`
+
+    const a = document.createElement('a')
+    a.href = url
+    a.download = filename
+    document.body.appendChild(a)
+    a.click()
+    document.body.removeChild(a)
+    URL.revokeObjectURL(url)
+  } catch (error) {
+    console.error('Export failed:', error)
+    throw error
+  }
+}
+
+// ========================================
+// Audit Log API
+// ========================================
+
+export interface AuditLogEntry {
+  id: number
+  level: string
+  cluster: string
+  username: string
+  action: string
+  resource: string
+  namespace: string
+  status: number
+  method: string
+  path: string
+  createdAt: string
+}
+
+export interface AuditLogResponse {
+  data: AuditLogEntry[]
+  pagination: {
+    page: number
+    pageSize: number
+    total: number
+    totalPages: number
+    hasNextPage: boolean
+    hasPrevPage: boolean
+  }
+}
+
+export interface AuditLogStats {
+  totalEntries: number
+  todayEntries: number
+  levelCounts: Record<string, number>
+  topUsers: { username: string; count: number }[]
+  topResources: { resource: string; count: number }[]
+}
+
+export const fetchAuditLogs = async (params?: {
+  page?: number
+  pageSize?: number
+  level?: string
+  cluster?: string
+  username?: string
+  resource?: string
+  action?: string
+}): Promise<AuditLogResponse> => {
+  const searchParams = new URLSearchParams()
+  if (params?.page) searchParams.append('page', String(params.page))
+  if (params?.pageSize)
+    searchParams.append('pageSize', String(params.pageSize))
+  if (params?.level) searchParams.append('level', params.level)
+  if (params?.cluster) searchParams.append('cluster', params.cluster)
+  if (params?.username) searchParams.append('username', params.username)
+  if (params?.resource) searchParams.append('resource', params.resource)
+  if (params?.action) searchParams.append('action', params.action)
+
+  return fetchAPI<AuditLogResponse>(
+    `/admin/audit-logs/?${searchParams.toString()}`
+  )
+}
+
+export const fetchAuditLogStats = async (): Promise<AuditLogStats> => {
+  return fetchAPI<AuditLogStats>('/admin/audit-logs/stats')
+}
